@@ -1,0 +1,3 @@
+.editor :global(.bytemd-toolbar-right > .bytemd-toolbar-icon:last-child) {
+  display: none;
+}
