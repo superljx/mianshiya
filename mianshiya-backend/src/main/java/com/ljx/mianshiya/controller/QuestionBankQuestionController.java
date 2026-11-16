@@ -1,5 +1,7 @@
 package com.ljx.mianshiya.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ljx.mianshiya.annotation.AuthCheck;
 import com.ljx.mianshiya.common.BaseResponse;
@@ -11,6 +13,7 @@ import com.ljx.mianshiya.exception.BusinessException;
 import com.ljx.mianshiya.exception.ThrowUtils;
 import com.ljx.mianshiya.model.dto.questionbankquestion.QuestionBankQuestionAddRequest;
 import com.ljx.mianshiya.model.dto.questionbankquestion.QuestionBankQuestionQueryRequest;
+import com.ljx.mianshiya.model.dto.questionbankquestion.QuestionBankQuestionRemoveRequest;
 import com.ljx.mianshiya.model.dto.questionbankquestion.QuestionBankQuestionUpdateRequest;
 import com.ljx.mianshiya.model.entity.QuestionBankQuestion;
 import com.ljx.mianshiya.model.entity.User;
@@ -51,6 +54,7 @@ public class QuestionBankQuestionController {
      * @return
      */
     @PostMapping("/add")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Long> addQuestionBankQuestion(@RequestBody QuestionBankQuestionAddRequest questionBankquestionAddRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(questionBankquestionAddRequest == null, ErrorCode.PARAMS_ERROR);
         QuestionBankQuestion questionBankquestion = new QuestionBankQuestion();
@@ -70,30 +74,27 @@ public class QuestionBankQuestionController {
     }
 
     /**
-     * 删除题库题目
+     * 删除题库题目关联
      *
-     * @param deleteRequest
+     * @param questionBankQuestionRemoveRequest
      * @param request
      * @return
      */
-    @PostMapping("/delete")
-    public BaseResponse<Boolean> deleteQuestionBankQuestion(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
-        if (deleteRequest == null || deleteRequest.getId() <= 0) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
-        }
-        User user = userService.getLoginUser(request);
-        long id = deleteRequest.getId();
-        // 判断是否存在
-        QuestionBankQuestion oldQuestionBankQuestion = questionBankquestionService.getById(id);
-        ThrowUtils.throwIf(oldQuestionBankQuestion == null, ErrorCode.NOT_FOUND_ERROR);
-        // 仅本人或管理员可删除
-        if (!oldQuestionBankQuestion.getUserId().equals(user.getId()) && !userService.isAdmin(request)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-        }
-        // 操作数据库
-        boolean result = questionBankquestionService.removeById(id);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        return ResultUtils.success(true);
+    @PostMapping("/remove")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> deleteQuestionBankQuestion(@RequestBody QuestionBankQuestionRemoveRequest questionBankQuestionRemoveRequest,
+                                                            HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBankQuestionRemoveRequest == null, ErrorCode.PARAMS_ERROR);
+        Long questionId = questionBankQuestionRemoveRequest.getQuestionId();
+        Long questionBankId = questionBankQuestionRemoveRequest.getQuestionBankId();
+        ThrowUtils.throwIf(questionId == null || questionBankId == null, ErrorCode.PARAMS_ERROR);
+
+        LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
+                .eq(QuestionBankQuestion::getQuestionId, questionId)
+                .eq(QuestionBankQuestion::getQuestionBankId, questionBankId);
+        boolean result = questionBankquestionService.remove(lambdaQueryWrapper);
+
+        return ResultUtils.success(result);
     }
 
     /**
