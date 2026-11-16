@@ -43,37 +43,57 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
     /**
      * 校验数据
      *
-     * @param questionbank
+     * @param questionBank
      * @param add      对创建的数据进行校验
      */
     @Override
-    public void validQuestionBank(QuestionBank questionbank, boolean add) {
-        ThrowUtils.throwIf(questionbank == null, ErrorCode.PARAMS_ERROR);
-        // todo 从对象中取值,补充校验规则
+    public void validQuestionBank(QuestionBank questionBank, boolean add) {
+        ThrowUtils.throwIf(questionBank == null, ErrorCode.PARAMS_ERROR);
+
+        String title = questionBank.getTitle();
+        String description = questionBank.getDescription();
+        String picture = questionBank.getPicture();
+
+        // 创建数据时，参数不能为空
+        if (add) {
+            ThrowUtils.throwIf(StringUtils.isBlank(title), ErrorCode.PARAMS_ERROR, "标题不能为空");
+            ThrowUtils.throwIf(StringUtils.isBlank(description), ErrorCode.PARAMS_ERROR, "题库描述不能为空");
+            ThrowUtils.throwIf(StringUtils.isBlank(picture), ErrorCode.PARAMS_ERROR, "图库的图标不能为空");
+        }
+        // 没有参数时报错
+        ThrowUtils
+                .throwIf(StringUtils.isBlank(title)
+                                && StringUtils.isBlank(description)
+                                && StringUtils.isBlank(picture),
+                        ErrorCode.PARAMS_ERROR, "参数不能全为空");
+        // 修改数据时，有参数则校验
+        if (StringUtils.isNotBlank(title)) {
+            ThrowUtils.throwIf(title.length() > 80, ErrorCode.PARAMS_ERROR, "标题过长");
+        }
     }
 
     /**
      * 获取查询条件
      *
-     * @param questionbankQueryRequest
+     * @param questionBankQueryRequest
      * @return
      */
     @Override
-    public QueryWrapper<QuestionBank> getQueryWrapper(QuestionBankQueryRequest questionbankQueryRequest) {
+    public QueryWrapper<QuestionBank> getQueryWrapper(QuestionBankQueryRequest questionBankQueryRequest) {
         QueryWrapper<QuestionBank> queryWrapper = new QueryWrapper<>();
-        if (questionbankQueryRequest == null) {
+        if (questionBankQueryRequest == null) {
             return queryWrapper;
         }
         // todo 从对象中取值
-        Long id = questionbankQueryRequest.getId();
-        Long notId = questionbankQueryRequest.getNotId();
-        String title = questionbankQueryRequest.getTitle();
-        String content = questionbankQueryRequest.getContent();
-        String searchText = questionbankQueryRequest.getSearchText();
-        String sortField = questionbankQueryRequest.getSortField();
-        String sortOrder = questionbankQueryRequest.getSortOrder();
-        List<String> tagList = questionbankQueryRequest.getTags();
-        Long userId = questionbankQueryRequest.getUserId();
+        Long id = questionBankQueryRequest.getId();
+        Long notId = questionBankQueryRequest.getNotId();
+        String title = questionBankQueryRequest.getTitle();
+        String content = questionBankQueryRequest.getContent();
+        String searchText = questionBankQueryRequest.getSearchText();
+        String sortField = questionBankQueryRequest.getSortField();
+        String sortOrder = questionBankQueryRequest.getSortOrder();
+        List<String> tagList = questionBankQueryRequest.getTags();
+        Long userId = questionBankQueryRequest.getUserId();
         // todo 补充需要的查询条件
         // 从多字段中搜索
         if (StringUtils.isNotBlank(searchText)) {
@@ -103,77 +123,77 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
     /**
      * 获取题库封装
      *
-     * @param questionbank
+     * @param questionBank
      * @param request
      * @return
      */
     @Override
-    public QuestionBankVO getQuestionBankVO(QuestionBank questionbank, HttpServletRequest request) {
+    public QuestionBankVO getQuestionBankVO(QuestionBank questionBank, HttpServletRequest request) {
         // 对象转封装类
-        QuestionBankVO questionbankVO = QuestionBankVO.objToVo(questionbank);
+        QuestionBankVO questionBankVO = QuestionBankVO.objToVo(questionBank);
 
         // todo 可以根据需要为封装对象补充值，不需要的内容可以删除
         // region 可选
         // 1. 关联查询用户信息
-        Long userId = questionbank.getUserId();
+        Long userId = questionBank.getUserId();
         User user = null;
         if (userId != null && userId > 0) {
             user = userService.getById(userId);
         }
         UserVO userVO = userService.getUserVO(user);
-        questionbankVO.setUser(userVO);
+        questionBankVO.setUser(userVO);
         // endregion
 
-        return questionbankVO;
+        return questionBankVO;
     }
 
     /**
      * 分页获取题库封装
      *
-     * @param questionbankPage
+     * @param questionBankPage
      * @param request
      * @return
      */
     @Override
-    public Page<QuestionBankVO> getQuestionBankVOPage(Page<QuestionBank> questionbankPage, HttpServletRequest request) {
-        List<QuestionBank> questionbankList = questionbankPage.getRecords();
-        Page<QuestionBankVO> questionbankVOPage = new Page<>(questionbankPage.getCurrent(), questionbankPage.getSize(), questionbankPage.getTotal());
-        if (CollUtil.isEmpty(questionbankList)) {
-            return questionbankVOPage;
+    public Page<QuestionBankVO> getQuestionBankVOPage(Page<QuestionBank> questionBankPage, HttpServletRequest request) {
+        List<QuestionBank> questionBankList = questionBankPage.getRecords();
+        Page<QuestionBankVO> questionBankVOPage = new Page<>(questionBankPage.getCurrent(), questionBankPage.getSize(), questionBankPage.getTotal());
+        if (CollUtil.isEmpty(questionBankList)) {
+            return questionBankVOPage;
         }
         // 对象列表 => 封装对象列表
-        List<QuestionBankVO> questionbankVOList = questionbankList.stream().map(questionbank -> {
-            return QuestionBankVO.objToVo(questionbank);
+        List<QuestionBankVO> questionBankVOList = questionBankList.stream().map(questionBank -> {
+            return QuestionBankVO.objToVo(questionBank);
         }).collect(Collectors.toList());
 
         // todo 可以根据需要为封装对象补充值，不需要的内容可以删除
         // region 可选
         // 1. 关联查询用户信息
-        Set<Long> userIdSet = questionbankList.stream().map(QuestionBank::getUserId).collect(Collectors.toSet());
+        Set<Long> userIdSet = questionBankList.stream().map(QuestionBank::getUserId).collect(Collectors.toSet());
         Map<Long, List<User>> userIdUserListMap = userService.listByIds(userIdSet).stream()
                 .collect(Collectors.groupingBy(User::getId));
         // 2. 已登录，获取用户点赞、收藏状态
-        Map<Long, Boolean> questionbankIdHasThumbMap = new HashMap<>();
-        Map<Long, Boolean> questionbankIdHasFavourMap = new HashMap<>();
+        Map<Long, Boolean> questionBankIdHasThumbMap = new HashMap<>();
+        Map<Long, Boolean> questionBankIdHasFavourMap = new HashMap<>();
         User loginUser = userService.getLoginUserPermitNull(request);
         if (loginUser != null) {
-            Set<Long> questionbankIdSet = questionbankList.stream().map(QuestionBank::getId).collect(Collectors.toSet());
+            Set<Long> questionBankIdSet = questionBankList.stream().map(QuestionBank::getId).collect(Collectors.toSet());
             loginUser = userService.getLoginUser(request);
         }
         // 填充信息
-        questionbankVOList.forEach(questionbankVO -> {
-            Long userId = questionbankVO.getUserId();
+        questionBankVOList.forEach(questionBankVO -> {
+            Long userId = questionBankVO.getUserId();
             User user = null;
             if (userIdUserListMap.containsKey(userId)) {
                 user = userIdUserListMap.get(userId).get(0);
             }
-            questionbankVO.setUser(userService.getUserVO(user));
+            questionBankVO.setUser(userService.getUserVO(user));
 
         });
         // endregion
 
-        questionbankVOPage.setRecords(questionbankVOList);
-        return questionbankVOPage;
+        questionBankVOPage.setRecords(questionBankVOList);
+        return questionBankVOPage;
     }
 
 }

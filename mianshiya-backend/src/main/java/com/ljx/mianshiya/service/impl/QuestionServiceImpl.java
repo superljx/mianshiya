@@ -49,15 +49,25 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     @Override
     public void validQuestion(Question question, boolean add) {
         ThrowUtils.throwIf(question == null, ErrorCode.PARAMS_ERROR);
-        // todo 从对象中取值
         String title = question.getTitle();
+        String content = question.getContent();
+        String answer = question.getAnswer();
+        String tags = question.getTags();
         // 创建数据时，参数不能为空
         if (add) {
-            // todo 补充校验规则
-            ThrowUtils.throwIf(StringUtils.isBlank(title), ErrorCode.PARAMS_ERROR);
+            ThrowUtils.throwIf(StringUtils.isBlank(title), ErrorCode.PARAMS_ERROR, "标题不能为空");
+            ThrowUtils.throwIf(StringUtils.isBlank(content), ErrorCode.PARAMS_ERROR, "题目内容不能为空");
+            ThrowUtils.throwIf(StringUtils.isBlank(answer), ErrorCode.PARAMS_ERROR, "答案不能为空");
+            ThrowUtils.throwIf(StringUtils.isBlank(tags), ErrorCode.PARAMS_ERROR, "标签不能为空");
         }
+        // 没有参数时报错
+        ThrowUtils
+                .throwIf(StringUtils.isBlank(title)
+                                && StringUtils.isBlank(content)
+                                && StringUtils.isBlank(answer)
+                                && StringUtils.isBlank(tags),
+                        ErrorCode.PARAMS_ERROR, "参数不能全为空");
         // 修改数据时，有参数则校验
-        // todo 补充校验规则
         if (StringUtils.isNotBlank(title)) {
             ThrowUtils.throwIf(title.length() > 80, ErrorCode.PARAMS_ERROR, "标题过长");
         }

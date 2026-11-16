@@ -22,6 +22,16 @@ public class QuestionBankQuestionVO implements Serializable {
     private Long id;
 
     /**
+     * 题目 id
+     */
+    private Long questionId;
+
+    /**
+     * 题库 id
+     */
+    private Long questionBankId;
+
+    /**
      * 标题
      */
     private String title;
@@ -59,32 +69,32 @@ public class QuestionBankQuestionVO implements Serializable {
     /**
      * 封装类转对象
      *
-     * @param questionbankquestionVO
+     * @param questionBankquestionVO
      * @return
      */
-    public static QuestionBankQuestion voToObj(QuestionBankQuestionVO questionbankquestionVO) {
-        if (questionbankquestionVO == null) {
+    public static QuestionBankQuestion voToObj(QuestionBankQuestionVO questionBankquestionVO) {
+        if (questionBankquestionVO == null) {
             return null;
         }
-        QuestionBankQuestion questionbankquestion = new QuestionBankQuestion();
-        BeanUtils.copyProperties(questionbankquestionVO, questionbankquestion);
-        List<String> tagList = questionbankquestionVO.getTagList();
+        QuestionBankQuestion questionBankquestion = new QuestionBankQuestion();
+        BeanUtils.copyProperties(questionBankquestionVO, questionBankquestion);
+        List<String> tagList = questionBankquestionVO.getTagList();
 
-        return questionbankquestion;
+        return questionBankquestion;
     }
 
     /**
      * 对象转封装类
      *
-     * @param questionbankquestion
+     * @param questionBankquestion
      * @return
      */
-    public static QuestionBankQuestionVO objToVo(QuestionBankQuestion questionbankquestion) {
-        if (questionbankquestion == null) {
+    public static QuestionBankQuestionVO objToVo(QuestionBankQuestion questionBankquestion) {
+        if (questionBankquestion == null) {
             return null;
         }
-        QuestionBankQuestionVO questionbankquestionVO = new QuestionBankQuestionVO();
-        BeanUtils.copyProperties(questionbankquestion, questionbankquestionVO);
-        return questionbankquestionVO;
+        QuestionBankQuestionVO questionBankquestionVO = new QuestionBankQuestionVO();
+        BeanUtils.copyProperties(questionBankquestion, questionBankquestionVO);
+        return questionBankquestionVO;
     }
 }

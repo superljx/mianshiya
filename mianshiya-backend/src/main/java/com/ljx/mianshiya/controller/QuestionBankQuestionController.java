@@ -16,6 +16,8 @@ import com.ljx.mianshiya.model.entity.QuestionBankQuestion;
 import com.ljx.mianshiya.model.entity.User;
 import com.ljx.mianshiya.model.vo.QuestionBankQuestionVO;
 import com.ljx.mianshiya.service.QuestionBankQuestionService;
+import com.ljx.mianshiya.service.QuestionBankService;
+import com.ljx.mianshiya.service.QuestionService;
 import com.ljx.mianshiya.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -29,12 +31,12 @@ import javax.servlet.http.HttpServletRequest;
  *
  */
 @RestController
-@RequestMapping("/questionbankquestion")
+@RequestMapping("/questionBankquestion")
 @Slf4j
 public class QuestionBankQuestionController {
 
     @Resource
-    private QuestionBankQuestionService questionbankquestionService;
+    private QuestionBankQuestionService questionBankquestionService;
 
     @Resource
     private UserService userService;
@@ -44,26 +46,26 @@ public class QuestionBankQuestionController {
     /**
      * 创建题库题目
      *
-     * @param questionbankquestionAddRequest
+     * @param questionBankquestionAddRequest
      * @param request
      * @return
      */
     @PostMapping("/add")
-    public BaseResponse<Long> addQuestionBankQuestion(@RequestBody QuestionBankQuestionAddRequest questionbankquestionAddRequest, HttpServletRequest request) {
-        ThrowUtils.throwIf(questionbankquestionAddRequest == null, ErrorCode.PARAMS_ERROR);
-        // todo 在此处将实体类和 DTO 进行转换
-        QuestionBankQuestion questionbankquestion = new QuestionBankQuestion();
-        BeanUtils.copyProperties(questionbankquestionAddRequest, questionbankquestion);
+    public BaseResponse<Long> addQuestionBankQuestion(@RequestBody QuestionBankQuestionAddRequest questionBankquestionAddRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBankquestionAddRequest == null, ErrorCode.PARAMS_ERROR);
+        QuestionBankQuestion questionBankquestion = new QuestionBankQuestion();
+        BeanUtils.copyProperties(questionBankquestionAddRequest, questionBankquestion);
         // 数据校验
-        questionbankquestionService.validQuestionBankQuestion(questionbankquestion, true);
-        // todo 填充默认值
+        questionBankquestionService.validQuestionBankQuestion(questionBankquestion, true);
+
         User loginUser = userService.getLoginUser(request);
-        questionbankquestion.setUserId(loginUser.getId());
+        questionBankquestion.setUserId(loginUser.getId());
+
         // 写入数据库
-        boolean result = questionbankquestionService.save(questionbankquestion);
+        boolean result = questionBankquestionService.save(questionBankquestion);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         // 返回新写入的数据 id
-        long newQuestionBankQuestionId = questionbankquestion.getId();
+        long newQuestionBankQuestionId = questionBankquestion.getId();
         return ResultUtils.success(newQuestionBankQuestionId);
     }
 
@@ -82,14 +84,14 @@ public class QuestionBankQuestionController {
         User user = userService.getLoginUser(request);
         long id = deleteRequest.getId();
         // 判断是否存在
-        QuestionBankQuestion oldQuestionBankQuestion = questionbankquestionService.getById(id);
+        QuestionBankQuestion oldQuestionBankQuestion = questionBankquestionService.getById(id);
         ThrowUtils.throwIf(oldQuestionBankQuestion == null, ErrorCode.NOT_FOUND_ERROR);
         // 仅本人或管理员可删除
         if (!oldQuestionBankQuestion.getUserId().equals(user.getId()) && !userService.isAdmin(request)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         // 操作数据库
-        boolean result = questionbankquestionService.removeById(id);
+        boolean result = questionBankquestionService.removeById(id);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
     }
@@ -97,26 +99,25 @@ public class QuestionBankQuestionController {
     /**
      * 更新题库题目（仅管理员可用）
      *
-     * @param questionbankquestionUpdateRequest
+     * @param questionBankquestionUpdateRequest
      * @return
      */
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Boolean> updateQuestionBankQuestion(@RequestBody QuestionBankQuestionUpdateRequest questionbankquestionUpdateRequest) {
-        if (questionbankquestionUpdateRequest == null || questionbankquestionUpdateRequest.getId() <= 0) {
+    public BaseResponse<Boolean> updateQuestionBankQuestion(@RequestBody QuestionBankQuestionUpdateRequest questionBankquestionUpdateRequest) {
+        if (questionBankquestionUpdateRequest == null || questionBankquestionUpdateRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        // todo 在此处将实体类和 DTO 进行转换
-        QuestionBankQuestion questionbankquestion = new QuestionBankQuestion();
-        BeanUtils.copyProperties(questionbankquestionUpdateRequest, questionbankquestion);
+        QuestionBankQuestion questionBankquestion = new QuestionBankQuestion();
+        BeanUtils.copyProperties(questionBankquestionUpdateRequest, questionBankquestion);
         // 数据校验
-        questionbankquestionService.validQuestionBankQuestion(questionbankquestion, false);
+        questionBankquestionService.validQuestionBankQuestion(questionBankquestion, false);
         // 判断是否存在
-        long id = questionbankquestionUpdateRequest.getId();
-        QuestionBankQuestion oldQuestionBankQuestion = questionbankquestionService.getById(id);
+        long id = questionBankquestionUpdateRequest.getId();
+        QuestionBankQuestion oldQuestionBankQuestion = questionBankquestionService.getById(id);
         ThrowUtils.throwIf(oldQuestionBankQuestion == null, ErrorCode.NOT_FOUND_ERROR);
         // 操作数据库
-        boolean result = questionbankquestionService.updateById(questionbankquestion);
+        boolean result = questionBankquestionService.updateById(questionBankquestion);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
     }
@@ -131,73 +132,73 @@ public class QuestionBankQuestionController {
     public BaseResponse<QuestionBankQuestionVO> getQuestionBankQuestionVOById(long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
         // 查询数据库
-        QuestionBankQuestion questionbankquestion = questionbankquestionService.getById(id);
-        ThrowUtils.throwIf(questionbankquestion == null, ErrorCode.NOT_FOUND_ERROR);
+        QuestionBankQuestion questionBankquestion = questionBankquestionService.getById(id);
+        ThrowUtils.throwIf(questionBankquestion == null, ErrorCode.NOT_FOUND_ERROR);
         // 获取封装类
-        return ResultUtils.success(questionbankquestionService.getQuestionBankQuestionVO(questionbankquestion, request));
+        return ResultUtils.success(questionBankquestionService.getQuestionBankQuestionVO(questionBankquestion, request));
     }
 
     /**
      * 分页获取题库题目列表（仅管理员可用）
      *
-     * @param questionbankquestionQueryRequest
+     * @param questionBankquestionQueryRequest
      * @return
      */
     @PostMapping("/list/page")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Page<QuestionBankQuestion>> listQuestionBankQuestionByPage(@RequestBody QuestionBankQuestionQueryRequest questionbankquestionQueryRequest) {
-        long current = questionbankquestionQueryRequest.getCurrent();
-        long size = questionbankquestionQueryRequest.getPageSize();
+    public BaseResponse<Page<QuestionBankQuestion>> listQuestionBankQuestionByPage(@RequestBody QuestionBankQuestionQueryRequest questionBankquestionQueryRequest) {
+        long current = questionBankquestionQueryRequest.getCurrent();
+        long size = questionBankquestionQueryRequest.getPageSize();
         // 查询数据库
-        Page<QuestionBankQuestion> questionbankquestionPage = questionbankquestionService.page(new Page<>(current, size),
-                questionbankquestionService.getQueryWrapper(questionbankquestionQueryRequest));
-        return ResultUtils.success(questionbankquestionPage);
+        Page<QuestionBankQuestion> questionBankquestionPage = questionBankquestionService.page(new Page<>(current, size),
+                questionBankquestionService.getQueryWrapper(questionBankquestionQueryRequest));
+        return ResultUtils.success(questionBankquestionPage);
     }
 
     /**
      * 分页获取题库题目列表（封装类）
      *
-     * @param questionbankquestionQueryRequest
+     * @param questionBankquestionQueryRequest
      * @param request
      * @return
      */
     @PostMapping("/list/page/vo")
-    public BaseResponse<Page<QuestionBankQuestionVO>> listQuestionBankQuestionVOByPage(@RequestBody QuestionBankQuestionQueryRequest questionbankquestionQueryRequest,
+    public BaseResponse<Page<QuestionBankQuestionVO>> listQuestionBankQuestionVOByPage(@RequestBody QuestionBankQuestionQueryRequest questionBankquestionQueryRequest,
                                                                HttpServletRequest request) {
-        long current = questionbankquestionQueryRequest.getCurrent();
-        long size = questionbankquestionQueryRequest.getPageSize();
+        long current = questionBankquestionQueryRequest.getCurrent();
+        long size = questionBankquestionQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
         // 查询数据库
-        Page<QuestionBankQuestion> questionbankquestionPage = questionbankquestionService.page(new Page<>(current, size),
-                questionbankquestionService.getQueryWrapper(questionbankquestionQueryRequest));
+        Page<QuestionBankQuestion> questionBankquestionPage = questionBankquestionService.page(new Page<>(current, size),
+                questionBankquestionService.getQueryWrapper(questionBankquestionQueryRequest));
         // 获取封装类
-        return ResultUtils.success(questionbankquestionService.getQuestionBankQuestionVOPage(questionbankquestionPage, request));
+        return ResultUtils.success(questionBankquestionService.getQuestionBankQuestionVOPage(questionBankquestionPage, request));
     }
 
     /**
      * 分页获取当前登录用户创建的题库题目列表
      *
-     * @param questionbankquestionQueryRequest
+     * @param questionBankquestionQueryRequest
      * @param request
      * @return
      */
     @PostMapping("/my/list/page/vo")
-    public BaseResponse<Page<QuestionBankQuestionVO>> listMyQuestionBankQuestionVOByPage(@RequestBody QuestionBankQuestionQueryRequest questionbankquestionQueryRequest,
+    public BaseResponse<Page<QuestionBankQuestionVO>> listMyQuestionBankQuestionVOByPage(@RequestBody QuestionBankQuestionQueryRequest questionBankquestionQueryRequest,
                                                                  HttpServletRequest request) {
-        ThrowUtils.throwIf(questionbankquestionQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(questionBankquestionQueryRequest == null, ErrorCode.PARAMS_ERROR);
         // 补充查询条件，只查询当前登录用户的数据
         User loginUser = userService.getLoginUser(request);
-        questionbankquestionQueryRequest.setUserId(loginUser.getId());
-        long current = questionbankquestionQueryRequest.getCurrent();
-        long size = questionbankquestionQueryRequest.getPageSize();
+        questionBankquestionQueryRequest.setUserId(loginUser.getId());
+        long current = questionBankquestionQueryRequest.getCurrent();
+        long size = questionBankquestionQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
         // 查询数据库
-        Page<QuestionBankQuestion> questionbankquestionPage = questionbankquestionService.page(new Page<>(current, size),
-                questionbankquestionService.getQueryWrapper(questionbankquestionQueryRequest));
+        Page<QuestionBankQuestion> questionBankquestionPage = questionBankquestionService.page(new Page<>(current, size),
+                questionBankquestionService.getQueryWrapper(questionBankquestionQueryRequest));
         // 获取封装类
-        return ResultUtils.success(questionbankquestionService.getQuestionBankQuestionVOPage(questionbankquestionPage, request));
+        return ResultUtils.success(questionBankquestionService.getQuestionBankQuestionVOPage(questionBankquestionPage, request));
     }
 
     // endregion

@@ -22,7 +22,7 @@ public class QuestionBankQuestion {
     /**
      * 题库 id
      */
-    private Long questionbankId;
+    private Long questionBankId;
 
     /**
      * 题目 id

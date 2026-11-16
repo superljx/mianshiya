@@ -29,7 +29,7 @@ public class CodeGenerator {
         // 指定生成参数
         String packageName = "com.ljx.mianshiya";
         String dataName = "题库题目";
-        String dataKey = "questionbankquestion";
+        String dataKey = "questionBankquestion";
         String upperDataKey = "QuestionBankQuestion";
 
         // 封装生成参数

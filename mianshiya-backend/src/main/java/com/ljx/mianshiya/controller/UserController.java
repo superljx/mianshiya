@@ -1,5 +1,6 @@
 package com.ljx.mianshiya.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ljx.mianshiya.annotation.AuthCheck;
 import com.ljx.mianshiya.common.BaseResponse;
@@ -168,12 +169,20 @@ public class UserController {
         if (userAddRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
+        // 账号是否重复
+        User userAccount = userService.getOne(new QueryWrapper<User>().eq("userAccount", userAddRequest.getUserAccount()));
+        ThrowUtils.throwIf(userAccount != null, ErrorCode.PARAMS_ERROR, "账号已存在");
+
         User user = new User();
         BeanUtils.copyProperties(userAddRequest, user);
         // 默认密码 12345678
         String defaultPassword = "12345678";
         String encryptPassword = DigestUtils.md5DigestAsHex((SALT + defaultPassword).getBytes());
         user.setUserPassword(encryptPassword);
+        // 避免传过来空值，数据库覆盖到空值
+        if (StringUtils.isBlank(user.getUserRole())) {
+            user.setUserRole(UserConstant.DEFAULT_ROLE);
+        }
         boolean result = userService.save(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(user.getId());
@@ -212,6 +221,9 @@ public class UserController {
         }
         User user = new User();
         BeanUtils.copyProperties(userUpdateRequest, user);
+        if (StringUtils.isBlank(user.getUserRole())) {
+            user.setUserRole(null);
+        }
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);

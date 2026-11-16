@@ -18,34 +18,34 @@ public interface QuestionBankQuestionService extends IService<QuestionBankQuesti
     /**
      * 校验数据
      *
-     * @param questionbankquestion
+     * @param questionBankquestion
      * @param add 对创建的数据进行校验
      */
-    void validQuestionBankQuestion(QuestionBankQuestion questionbankquestion, boolean add);
+    void validQuestionBankQuestion(QuestionBankQuestion questionBankquestion, boolean add);
 
     /**
      * 获取查询条件
      *
-     * @param questionbankquestionQueryRequest
+     * @param questionBankquestionQueryRequest
      * @return
      */
-    QueryWrapper<QuestionBankQuestion> getQueryWrapper(QuestionBankQuestionQueryRequest questionbankquestionQueryRequest);
+    QueryWrapper<QuestionBankQuestion> getQueryWrapper(QuestionBankQuestionQueryRequest questionBankquestionQueryRequest);
     
     /**
      * 获取题库题目封装
      *
-     * @param questionbankquestion
+     * @param questionBankquestion
      * @param request
      * @return
      */
-    QuestionBankQuestionVO getQuestionBankQuestionVO(QuestionBankQuestion questionbankquestion, HttpServletRequest request);
+    QuestionBankQuestionVO getQuestionBankQuestionVO(QuestionBankQuestion questionBankquestion, HttpServletRequest request);
 
     /**
      * 分页获取题库题目封装
      *
-     * @param questionbankquestionPage
+     * @param questionBankquestionPage
      * @param request
      * @return
      */
-    Page<QuestionBankQuestionVO> getQuestionBankQuestionVOPage(Page<QuestionBankQuestion> questionbankquestionPage, HttpServletRequest request);
+    Page<QuestionBankQuestionVO> getQuestionBankQuestionVOPage(Page<QuestionBankQuestion> questionBankquestionPage, HttpServletRequest request);
 }

@@ -59,31 +59,31 @@ public class QuestionBankVO implements Serializable {
     /**
      * 封装类转对象
      *
-     * @param questionbankVO
+     * @param questionBankVO
      * @return
      */
-    public static QuestionBank voToObj(QuestionBankVO questionbankVO) {
-        if (questionbankVO == null) {
+    public static QuestionBank voToObj(QuestionBankVO questionBankVO) {
+        if (questionBankVO == null) {
             return null;
         }
-        QuestionBank questionbank = new QuestionBank();
-        BeanUtils.copyProperties(questionbankVO, questionbank);
-        List<String> tagList = questionbankVO.getTagList();
-        return questionbank;
+        QuestionBank questionBank = new QuestionBank();
+        BeanUtils.copyProperties(questionBankVO, questionBank);
+        List<String> tagList = questionBankVO.getTagList();
+        return questionBank;
     }
 
     /**
      * 对象转封装类
      *
-     * @param questionbank
+     * @param questionBank
      * @return
      */
-    public static QuestionBankVO objToVo(QuestionBank questionbank) {
-        if (questionbank == null) {
+    public static QuestionBankVO objToVo(QuestionBank questionBank) {
+        if (questionBank == null) {
             return null;
         }
-        QuestionBankVO questionbankVO = new QuestionBankVO();
-        BeanUtils.copyProperties(questionbank, questionbankVO);
-        return questionbankVO;
+        QuestionBankVO questionBankVO = new QuestionBankVO();
+        BeanUtils.copyProperties(questionBank, questionBankVO);
+        return questionBankVO;
     }
 }
