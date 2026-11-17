@@ -22,7 +22,9 @@ import com.ljx.mianshiya.model.vo.LoginUserVO;
 import com.ljx.mianshiya.model.vo.UserVO;
 import com.ljx.mianshiya.service.UserService;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -326,5 +328,29 @@ public class UserController {
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
+    }
+
+    /**
+     * 更新用户的活跃次数
+     * @param request
+     * @return 当天最新活跃次数
+     */
+    @PostMapping("/update/active")
+    public BaseResponse<Integer> UpdateUserActive(HttpServletRequest request) {
+        int activeNumToday = userService.userActive(request);
+        return ResultUtils.success(activeNumToday);
+    }
+
+    /**
+     * 获取用户的活跃记录
+     * @param year 目标年份，空表示今年
+     * @param request
+     * @return 活跃记录
+     */
+    @PostMapping("/get/active")
+    public BaseResponse<Map<LocalDate, Integer>> getUserActive(Integer year, HttpServletRequest request) {
+        User user = userService.getLoginUser(request);
+        Map<LocalDate, Integer> userActiveRecord = userService.getUserActiveRecord(user.getId(), year);
+        return ResultUtils.success(userActiveRecord);
     }
 }

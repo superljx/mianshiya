@@ -70,7 +70,7 @@ export default function BasicLayout({ children }: { children: React.ReactNode })
         ) : dom}
         actionsRender={() => [<div key="user" className="header-user">
           {isLoading ? <Spin size="small" /> : loginUser ? (
-            <Dropdown menu={{ items: [{ key: "logout", icon: <LogoutOutlined />, label: "退出登录", onClick: handleLogout }] }}>
+            <Dropdown menu={{ items: [{ key: "center", icon: <UserOutlined />, label: <Link href="/user/center">个人中心</Link> }, { key: "logout", icon: <LogoutOutlined />, label: "退出登录", onClick: handleLogout }] }}>
               <Button type="text"><Avatar size="small" src={loginUser.userAvatar || undefined} icon={<UserOutlined />} />{loginUser.userName || "用户"}</Button>
             </Dropdown>
           ) : <Link href="/user/login"><Button type="primary">登录</Button></Link>}

@@ -6,7 +6,10 @@ import com.ljx.mianshiya.model.dto.user.UserQueryRequest;
 import com.ljx.mianshiya.model.entity.User;
 import com.ljx.mianshiya.model.vo.LoginUserVO;
 import com.ljx.mianshiya.model.vo.UserVO;
+
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import me.chanjar.weixin.common.bean.WxOAuth2UserInfo;
 
@@ -116,4 +119,19 @@ public interface UserService extends IService<User> {
      */
     QueryWrapper<User> getQueryWrapper(UserQueryRequest userQueryRequest);
 
+    /**
+     * 更新用户活跃记录
+     *
+     * @param request
+     * @return 当天活跃数
+     */
+    int userActive(HttpServletRequest request);
+
+    /**
+     * 获取用户某年的活跃记录
+     * @param userId
+     * @param year
+     * @return
+     */
+    Map<LocalDate, Integer> getUserActiveRecord(long userId, Integer year);
 }

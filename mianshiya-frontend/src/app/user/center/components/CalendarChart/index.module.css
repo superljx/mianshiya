@@ -1,0 +1,5 @@
+.toolbar { margin-bottom: 24px; }
+.stats { margin-bottom: 24px; }
+.scroll { overflow-x: auto; width: 100%; }
+.chart { width: 100%; min-width: 760px; height: 250px; }
+.loading { min-height: 280px; display: grid; place-items: center; }

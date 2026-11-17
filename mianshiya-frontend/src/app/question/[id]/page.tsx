@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Alert, Card, Empty, Tag } from "antd";
 import { serverRequest } from "@/lib/serverRequest";
 import MdViewer from "@/components/MdViewer";
+import QuestionActivity from "@/components/QuestionActivity";
 import { questionTags } from "@/components/QuestionList";
 import type { QuestionContent } from "@/types/content";
 
@@ -22,6 +23,7 @@ export default async function QuestionPage({ params }: { params: { id: string } 
     <main className="page-container">
       <Link href="/questions">返回题目列表</Link>
       {error ? <Alert style={{ marginTop: 24 }} type="error" showIcon message="无法加载题目" description={error} /> : question && <>
+        <QuestionActivity key={params.id} questionId={params.id} />
         <h1 className="page-title" style={{ marginTop: 24 }}>{question.title || "未命名题目"}</h1>
         <div style={{ marginBottom: 16 }}>{questionTags(question).map((tag, index) => <Tag key={`${tag}-${index}`}>{tag}</Tag>)}</div>
         {question.user?.userName && <p className="page-description">创建者：{question.user.userName}</p>}

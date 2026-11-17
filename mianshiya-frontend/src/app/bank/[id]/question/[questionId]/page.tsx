@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Alert, Card, Empty, Tag } from "antd";
 import MdViewer from "@/components/MdViewer";
+import QuestionActivity from "@/components/QuestionActivity";
 import { questionTags } from "@/components/QuestionList";
 import { ContentPagination, readSearch } from "@/components/QuestionList/ContentNavigation";
 import type { ContentPage } from "@/types/content";
@@ -57,6 +58,7 @@ export default async function BankQuestionPage({ params, searchParams }: { param
         </aside>
         <section className={styles.content} aria-label="当前题目">
           {error ? <Alert type="error" showIcon message="无法加载题目" description={error} /> : question && <>
+            <QuestionActivity key={params.questionId} questionId={params.questionId} />
             <h2 className={styles.questionTitle}>{question.title || "未命名题目"}</h2>
             <div className={styles.tags}>{questionTags(question).map((tag, index) => <Tag key={`${tag}-${index}`}>{tag}</Tag>)}</div>
             {question.user?.userName && <p className={styles.note}>创建者：{question.user.userName}</p>}
