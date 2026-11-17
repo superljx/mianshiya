@@ -5,6 +5,7 @@ import { App, Button, Card, Form, Input, Modal, Popconfirm, Space, Table, Typogr
 import type { TableColumnsType } from "antd";
 import { PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import { apiRequest } from "@/lib/request";
+import BankCoverInput, { isBankCoverUrl } from "@/components/BankCoverInput";
 
 export default function AdminBankPage() {
   const { message } = App.useApp();
@@ -19,6 +20,8 @@ export default function AdminBankPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<API.QuestionBank | null>(null);
   const [saving, setSaving] = useState(false);
+  const [coverBusy, setCoverBusy] = useState(false);
+  const coverBusyRef = useRef(false);
   const [deletingId, setDeletingId] = useState<number>();
   const savingRef = useRef(false);
   const deletingRef = useRef(false);
@@ -49,7 +52,7 @@ export default function AdminBankPage() {
   }
 
   async function save(values: API.QuestionBankAddRequest) {
-    if (savingRef.current) return;
+    if (savingRef.current || coverBusyRef.current) return;
     savingRef.current = true;
     setSaving(true);
     try {
@@ -125,11 +128,13 @@ export default function AdminBankPage() {
     </Space>}>
       <Table<API.QuestionBank> rowKey={(bank) => String(bank.id)} columns={columns} dataSource={records} loading={loading} scroll={{ x: 1600 }} pagination={{ ...pagination, total, showSizeChanger: true, showTotal: (count) => `共 ${count} 个题库`, onChange: (current, pageSize) => setPagination({ current, pageSize }) }} />
     </Card>
-    <Modal title={editing ? "编辑题库" : "新增题库"} open={open} forceRender confirmLoading={saving} maskClosable={!saving} closable={!saving} cancelButtonProps={{ disabled: saving }} okText="保存" cancelText="取消" onCancel={() => { if (!saving) setOpen(false); }} onOk={() => editForm.submit()}>
+    <Modal title={editing ? "编辑题库" : "新增题库"} open={open} forceRender confirmLoading={saving} maskClosable={!saving && !coverBusy} closable={!saving && !coverBusy} cancelButtonProps={{ disabled: saving || coverBusy }} okButtonProps={{ disabled: coverBusy }} okText="保存" cancelText="取消" onCancel={() => { if (!saving && !coverBusyRef.current) setOpen(false); }} onOk={() => editForm.submit()}>
       <Form form={editForm} layout="vertical" onFinish={save} disabled={saving}>
         <Form.Item label="标题" name="title" rules={[{ required: true, whitespace: true, message: "请输入题库标题" }]}><Input maxLength={80} showCount /></Form.Item>
         <Form.Item label="描述" name="description"><Input.TextArea rows={4} /></Form.Item>
-        <Form.Item label="图片地址" name="picture" rules={[{ type: "url", message: "请输入有效的图片 URL" }]}><Input placeholder="请输入图片 URL" /></Form.Item>
+        <Form.Item label="题库封面" name="picture" rules={[{ validator: (_, value: string | undefined) => !value || isBankCoverUrl(value) ? Promise.resolve() : Promise.reject(new Error("请输入 HTTP(S) 图片地址或 / 开头的本地路径")) }]}>
+          <BankCoverInput disabled={saving} onBusyChange={(busy) => { coverBusyRef.current = busy; setCoverBusy(busy); }} />
+        </Form.Item>
       </Form>
     </Modal>
   </Space>;

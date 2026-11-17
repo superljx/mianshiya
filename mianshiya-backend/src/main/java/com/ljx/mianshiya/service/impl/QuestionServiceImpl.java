@@ -196,6 +196,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     public Page<Question> listQuestionByPage(QuestionQueryRequest questionQueryRequest) {
         long current = questionQueryRequest.getCurrent();
         long pageSize = questionQueryRequest.getPageSize();
+        ThrowUtils.throwIf(current < 1 || pageSize < 1, ErrorCode.PARAMS_ERROR);
 
         QueryWrapper<Question> queryWrapper = this.getQueryWrapper(questionQueryRequest);
         Long questionBankId = questionQueryRequest.getQuestionBankId();
@@ -209,7 +210,10 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             // 虽然只查一列但返回的仍是一个对象
             List<QuestionBankQuestion> questionBankQuestionList = questionBankQuestionService.list(lambdaQueryWrapper);
 
-            //
+            // 空题库必须返回空页，不能丢失题库约束后查询全部题目。
+            if (CollUtil.isEmpty(questionBankQuestionList)) {
+                return new Page<Question>(current, pageSize, 0);
+            }
             if (CollUtil.isNotEmpty(questionBankQuestionList)) {
                 // 从所有关系中取出 questionId
                 Set<Long> questionIdSet = questionBankQuestionList.stream()
@@ -220,6 +224,8 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             }
         }
 
+        // 翻页使用稳定顺序，避免同一题目跨页重复或遗漏。
+        queryWrapper.orderByAsc("id");
         return this.page(new Page<>(current, pageSize), queryWrapper);
     }
 

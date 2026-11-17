@@ -10,7 +10,12 @@
 .hero p { color: #65758b; line-height: 1.9; margin: 0 0 30px; font-size: 16px; }
 .primaryLink { display: inline-flex; gap: 16px; align-items: center; background: #1677ff; color: white; padding: 12px 22px; border-radius: 8px; font-weight: 600; }
 .secondaryLink { display: inline-block; margin-left: 24px; color: #41628d; }
-.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 24px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 20px; margin-top: 24px; }
+.bankRow { display: flex; align-items: center; gap: 16px; }
+.bankText { min-width: 0; }
+.bankTitle { margin: 0 0 8px; font-size: 18px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card .bankDescription { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; font-size: 14px; }
+.card .bankAction { margin-top: 18px; color: #41628d; font-size: 14px; }
 .card { border: 1px solid #edf0f3; border-radius: 12px; background: white; padding: 28px; }
 .card > span { color: #306bc4; font-size: 26px; }
 .card h2 { font-size: 18px; margin: 20px 0 12px; }

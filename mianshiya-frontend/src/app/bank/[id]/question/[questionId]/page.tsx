@@ -2,11 +2,15 @@ import Link from "next/link";
 import { Alert, Card, Empty, Tag } from "antd";
 import MdViewer from "@/components/MdViewer";
 import { questionTags } from "@/components/QuestionList";
+import { ContentPagination, readSearch } from "@/components/QuestionList/ContentNavigation";
+import type { ContentPage } from "@/types/content";
 import { serverRequest } from "@/lib/serverRequest";
 import type { QuestionBankContent, QuestionContent } from "@/types/content";
 import styles from "./page.module.css";
 
-export default async function BankQuestionPage({ params }: { params: { id: string; questionId: string } }) {
+export default async function BankQuestionPage({ params, searchParams }: { params: { id: string; questionId: string }; searchParams: Record<string, string | string[] | undefined> }) {
+  const { current } = readSearch(searchParams);
+  const pageSize = 10;
   let bank: QuestionBankContent | undefined;
   let question: QuestionContent | undefined;
   let error = "";
@@ -14,14 +18,19 @@ export default async function BankQuestionPage({ params }: { params: { id: strin
     error = "题库或题目编号无效";
   } else {
     try {
-      bank = await serverRequest<QuestionBankContent>("/questionBank/get/vo", { id: params.id, needQueryQuestionList: true });
+      bank = await serverRequest<QuestionBankContent>("/questionBank/get/vo", { id: params.id, needQueryQuestionList: true, current, pageSize });
       if (!bank) {
         error = "题库不存在或已被删除";
-      } else if (!bank.questionPage?.records?.some((item) => item.id != null && String(item.id) === params.questionId)) {
-        error = "当前题目不在已加载的题库列表中，无法确认题库归属。接口仅返回第一页，请从左侧已加载题目中选择。";
       } else {
-        question = await serverRequest<QuestionContent>(`/question/get/vo?id=${encodeURIComponent(params.questionId)}`);
-        if (!question || String(question.id) !== params.questionId) error = "题目不存在或接口返回的题目编号不一致";
+        const membership = await serverRequest<ContentPage<QuestionContent>>("/question/list/page/vo", {
+          questionBankId: params.id, id: params.questionId, current: 1, pageSize: 1,
+        });
+        if (!membership.records?.some((item) => String(item.id) === params.questionId)) {
+          error = "当前题目不属于该题库或已被移除";
+        } else {
+          question = await serverRequest<QuestionContent>(`/question/get/vo?id=${encodeURIComponent(params.questionId)}`);
+          if (!question || String(question.id) !== params.questionId) error = "题目不存在或接口返回的题目编号不一致";
+        }
       }
     } catch (cause) {
       error = cause instanceof Error ? cause.message : "题目加载失败，请稍后重试";
@@ -38,13 +47,13 @@ export default async function BankQuestionPage({ params }: { params: { id: strin
           {questions.length ? <ul className={styles.list}>
             {questions.map((item, index) => <li key={item.id ?? index}>
               {item.id != null ? <Link
-                href={`/bank/${encodeURIComponent(params.id)}/question/${encodeURIComponent(item.id)}`}
+                href={`/bank/${encodeURIComponent(params.id)}/question/${encodeURIComponent(item.id)}?current=${current}`}
                 className={String(item.id) === params.questionId ? styles.active : styles.link}
                 aria-current={String(item.id) === params.questionId ? "page" : undefined}
               >{index + 1}. {item.title || "未命名题目"}</Link> : <span className={styles.link}>{item.title || "未命名题目"}</span>}
             </li>)}
           </ul> : <Empty description="暂无可加载题目" />}
-          <p className={styles.note}>共 {Number(bank?.questionPage?.total) || 0} 题，当前仅显示接口返回的第一页，暂不支持翻页。</p>
+          <ContentPagination path={`/bank/${params.id}/question/${params.questionId}`} title="" current={current} total={bank?.questionPage?.total} pageSize={pageSize} />
         </aside>
         <section className={styles.content} aria-label="当前题目">
           {error ? <Alert type="error" showIcon message="无法加载题目" description={error} /> : question && <>
@@ -54,7 +63,7 @@ export default async function BankQuestionPage({ params }: { params: { id: strin
             <Card title="题目内容" style={{ marginBottom: 24 }}>
               {question.content ? <MdViewer value={question.content} /> : <Empty description="接口未提供题目内容" />}
             </Card>
-            <Card title="参考答案"><Alert type="info" showIcon message="答案暂未由接口提供" description="当前公开题目详情接口不包含答案字段。" /></Card>
+            <Card title="参考答案">{question.answer?.trim() ? <MdViewer value={question.answer} /> : <Empty description="暂无参考答案" />}</Card>
           </>}
         </section>
       </div>

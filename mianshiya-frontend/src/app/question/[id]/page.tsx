@@ -29,7 +29,7 @@ export default async function QuestionPage({ params }: { params: { id: string } 
           {question.content ? <MdViewer value={question.content} /> : <Empty description="接口未提供题目内容" />}
         </Card>
         <Card title="参考答案">
-          <Alert type="info" showIcon message="答案暂未由接口提供" description="当前公开题目详情接口不包含答案字段。" />
+          {question.answer?.trim() ? <MdViewer value={question.answer} /> : <Empty description="暂无参考答案" />}
         </Card>
       </>}
     </main>

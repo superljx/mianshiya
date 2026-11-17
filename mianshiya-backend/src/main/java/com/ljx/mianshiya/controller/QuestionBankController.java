@@ -136,8 +136,8 @@ public class QuestionBankController {
     public BaseResponse<QuestionBankVO> getQuestionBankVOById(@RequestBody QuestionBankQueryRequest questionBankQueryRequest,
                                                               HttpServletRequest request) {
         ThrowUtils.throwIf(questionBankQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        long id = questionBankQueryRequest.getId();
-        ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+        Long id = questionBankQueryRequest.getId();
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
         // 查询数据库
         QuestionBank questionBank = questionBankService.getById(id);
         ThrowUtils.throwIf(questionBank == null, ErrorCode.NOT_FOUND_ERROR);
@@ -145,9 +145,15 @@ public class QuestionBankController {
         QuestionBankVO questionBankVO = questionBankService.getQuestionBankVO(questionBank, request);
 
         // 是否需要关联查询题库下的题目信息
-        boolean need = questionBankQueryRequest.getNeedQueryQuestionList();
-        if (need) {
+        if (Boolean.TRUE.equals(questionBankQueryRequest.getNeedQueryQuestionList())) {
             QuestionQueryRequest questionQueryRequest = new QuestionQueryRequest();
+            questionQueryRequest.setCurrent(questionBankQueryRequest.getCurrent());
+            questionQueryRequest.setPageSize(questionBankQueryRequest.getPageSize());
+            ThrowUtils.throwIf(questionQueryRequest.getCurrent() < 1
+                    || questionQueryRequest.getPageSize() < 1
+                    || questionQueryRequest.getPageSize() > 20, ErrorCode.PARAMS_ERROR);
+            questionQueryRequest.setSortField(questionBankQueryRequest.getSortField());
+            questionQueryRequest.setSortOrder(questionBankQueryRequest.getSortOrder());
             questionQueryRequest.setQuestionBankId(id);
             Page<Question> questionPage = questionService.listQuestionByPage(questionQueryRequest);
             questionBankVO.setQuestionPage(questionPage);

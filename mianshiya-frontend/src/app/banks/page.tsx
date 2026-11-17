@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BankCover from "@/components/BankCover";
 import { Alert, Card, Empty } from "antd";
 import { serverRequest } from "@/lib/serverRequest";
 import { ContentPagination, ContentSearch, readSearch } from "@/components/QuestionList/ContentNavigation";
@@ -22,8 +23,14 @@ export default async function BanksPage({ searchParams }: { searchParams: Conten
       {error ? <Alert type="error" showIcon message="题库加载失败" description={error} /> : <>
         {page?.records?.length ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
           {page.records.map((bank, index) => <Card key={bank.id ?? index}>
-            <h2 style={{ marginTop: 0, fontSize: 20 }}>{bank.id != null ? <Link href={`/bank/${encodeURIComponent(bank.id)}`}>{bank.title || "未命名题库"}</Link> : bank.title || "未命名题库"}</h2>
-            {bank.user?.userName && <p style={{ color: "#8c8c8c", marginBottom: 0 }}>创建者：{bank.user.userName}</p>}
+            <div className="bank-card-row">
+              <BankCover src={bank.picture} title={bank.title} />
+              <div className="bank-card-text">
+                <h2 className="bank-card-title">{bank.id != null ? <Link href={`/bank/${encodeURIComponent(bank.id)}`}>{bank.title || "未命名题库"}</Link> : bank.title || "未命名题库"}</h2>
+                <p className="bank-card-description">{bank.description?.trim() || "暂无题库介绍"}</p>
+              </div>
+            </div>
+            {bank.user?.userName && <p style={{ color: "#8c8c8c", marginBottom: 0, marginTop: 16 }}>创建者：{bank.user.userName}</p>}
           </Card>)}
         </div> : <Empty description={title ? "没有找到匹配的题库" : "暂无题库"} />}
         <ContentPagination path="/banks" title={title} current={current} total={page?.total} pageSize={pageSize} />

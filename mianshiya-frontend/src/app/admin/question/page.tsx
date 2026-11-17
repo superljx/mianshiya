@@ -75,14 +75,14 @@ export default function AdminQuestionPage() {
     setSaving(true);
     try {
       if (editing) {
-        const data: API.QuestionUpdateRequest = { id: editing.id, title: values.title?.trim(), content: values.content, answer: values.answer };
+        const data: API.QuestionUpdateRequest = { id: editing.id, title: values.title?.trim(), content: values.content, answer: values.answer, tags: Array.from(new Set((values.tags ?? []).map((tag) => tag.trim()).filter(Boolean))) };
         const updated = await apiRequest<boolean>({ url: "/question/update", method: "POST", data });
         if (!updated) throw new Error("题目未更新，请刷新后重试");
       } else {
         const data: API.QuestionAddRequest = { ...values, title: values.title?.trim(), tags: Array.from(new Set((values.tags ?? []).map((tag) => tag.trim()).filter(Boolean))) };
         await apiRequest<number>({ url: "/question/add", method: "POST", data });
       }
-      void message.success(editing ? "题目已更新（标签保持不变）" : "题目已新增");
+      void message.success(editing ? "题目已更新" : "题目已新增");
       setOpen(false);
       setRefreshKey((value) => value + 1);
     } catch (error: unknown) {
@@ -177,8 +177,7 @@ export default function AdminQuestionPage() {
     <Modal title={editing ? "编辑题目" : "新增题目"} open={open} width={1000} forceRender confirmLoading={saving} maskClosable={!saving} closable={!saving} cancelButtonProps={{ disabled: saving }} okText="保存" cancelText="取消" onCancel={() => { if (!saving) setOpen(false); }} onOk={() => editForm.submit()}>
       <Form form={editForm} layout="vertical" onFinish={save} disabled={saving}>
         <Form.Item label="标题" name="title" rules={[{ required: true, whitespace: true, message: "请输入题目标题" }]}><Input maxLength={80} showCount /></Form.Item>
-        {editing && <Alert type="warning" showIcon message="后端题目更新接口暂未正确转换标签，编辑时标签只读并保持原值；新增题目可正常设置标签。" style={{ marginBottom: 16 }} />}
-        <Form.Item label="标签" name="tags"><Select mode="tags" disabled={saving || Boolean(editing)} placeholder="输入标签后按回车" /></Form.Item>
+        <Form.Item label="标签" name="tags"><Select mode="tags" disabled={saving} placeholder="输入标签后按回车" /></Form.Item>
         <Form.Item label="内容（Markdown）" name="content"><MdEditor /></Form.Item>
         <Form.Item label="答案（Markdown）" name="answer"><MdEditor /></Form.Item>
       </Form>

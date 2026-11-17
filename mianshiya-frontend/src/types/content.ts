@@ -20,6 +20,8 @@ export type QuestionBankContent = Omit<API.QuestionBankVO, "id" | "questionPage"
   id?: ContentId;
   user?: ContentUser;
   questionPage?: ContentPage<QuestionContent>;
+  description?: string;
+  picture?: string;
 };
 
 export type ContentSearchParams = Record<string, string | string[] | undefined>;

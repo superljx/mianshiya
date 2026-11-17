@@ -28,6 +28,15 @@ public class QuestionBankVO implements Serializable {
      */
     private String title;
 
+    /**
+     * 题库描述
+     */
+    private String description;
+
+    /**
+     * 题库封面（图标）
+     */
+    private String picture;
 
     /**
      * 创建用户 id

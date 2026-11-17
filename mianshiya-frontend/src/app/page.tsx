@@ -1,9 +1,11 @@
 import Link from "next/link";
+import BankCover from "@/components/BankCover";
+import GuestActions from "@/components/GuestActions";
 import { ArrowRightOutlined, CodeOutlined, SafetyCertificateOutlined, UserOutlined } from "@ant-design/icons";
 import styles from "./page.module.css";
 import { serverRequest } from "@/lib/serverRequest";
 
-interface HomeRecord { id: string | number; title?: string; }
+interface HomeRecord { id: string | number; title?: string; description?: string; picture?: string; }
 interface HomePageData { records: HomeRecord[]; }
 
 export default async function Home() {
@@ -16,13 +18,12 @@ export default async function Home() {
       <section className={styles.hero}>
         <div className={styles.eyebrow}>程序员面试刷题平台</div>
         <h1>每一次练习，<br />都离理想的 Offer 更近一步。</h1>
-        <p>系统整理技术知识，认真准备每一场面试。<br />从建立自己的学习账号开始。</p>
-        <Link href="/user/register" className={styles.primaryLink}>创建账号 <ArrowRightOutlined /></Link>
-        <Link href="/user/login" className={styles.secondaryLink}>已有账号，去登录</Link>
+        
+        <GuestActions primaryClassName={styles.primaryLink} secondaryClassName={styles.secondaryLink} />
       </section>
       <section className={styles.contentSection}>
         <h2>最新题库 <Link href="/banks">查看全部 →</Link></h2>
-        {banks.status === "fulfilled" ? banks.value.records.length ? <div className={styles.grid}>{banks.value.records.map((bank) => <Link className={styles.card} href={`/bank/${bank.id}`} key={bank.id}><h3>{bank.title || "未命名题库"}</h3><p>进入题库，开始练习 →</p></Link>)}</div> : <p>暂无题库</p> : <p>题库加载失败，请稍后重试。</p>}
+        {banks.status === "fulfilled" ? banks.value.records.length ? <div className={styles.grid}>{banks.value.records.map((bank) => <Link className={styles.card} href={`/bank/${bank.id}`} key={bank.id}><div className={styles.bankRow}><BankCover src={bank.picture} title={bank.title} /><div className={styles.bankText}><h3 className={styles.bankTitle}>{bank.title || "未命名题库"}</h3><p className={styles.bankDescription}>{bank.description?.trim() || "暂无题库介绍"}</p></div></div><p className={styles.bankAction}>进入题库，开始练习 →</p></Link>)}</div> : <p>暂无题库</p> : <p>题库加载失败，请稍后重试。</p>}
       </section>
       <section className={styles.contentSection}>
         <h2>最新题目 <Link href="/questions">查看全部 →</Link></h2>

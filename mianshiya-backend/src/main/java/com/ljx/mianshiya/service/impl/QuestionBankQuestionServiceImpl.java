@@ -89,7 +89,11 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
         String sortField = questionBankquestionQueryRequest.getSortField();
         String sortOrder = questionBankquestionQueryRequest.getSortOrder();
         Long userId = questionBankquestionQueryRequest.getUserId();
+        Long questionBankId = questionBankquestionQueryRequest.getQuestionBankId();
+        Long questionId = questionBankquestionQueryRequest.getQuestionId();
         // 精确查询
+        queryWrapper.eq(questionBankId != null, "questionBankId", questionBankId);
+        queryWrapper.eq(questionId != null, "questionId", questionId);
         queryWrapper.ne(ObjectUtils.isNotEmpty(notId), "id", notId);
         queryWrapper.eq(ObjectUtils.isNotEmpty(id), "id", id);
         queryWrapper.eq(ObjectUtils.isNotEmpty(userId), "userId", userId);

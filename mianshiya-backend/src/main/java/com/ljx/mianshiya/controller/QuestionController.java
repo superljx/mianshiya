@@ -115,6 +115,9 @@ public class QuestionController {
         }
         Question question = new Question();
         BeanUtils.copyProperties(questionUpdateRequest, question);
+        if (questionUpdateRequest.getTags() != null) {
+            question.setTags(JSONUtil.toJsonStr(questionUpdateRequest.getTags()));
+        }
         // 数据校验
         questionService.validQuestion(question, false);
         // 判断是否存在
@@ -170,8 +173,7 @@ public class QuestionController {
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
         // 查询数据库
-        Page<Question> questionPage = questionService.page(new Page<>(current, size),
-                questionService.getQueryWrapper(questionQueryRequest));
+        Page<Question> questionPage = questionService.listQuestionByPage(questionQueryRequest);
         // 获取封装类
         return ResultUtils.success(questionService.getQuestionVOPage(questionPage, request));
     }
@@ -195,8 +197,7 @@ public class QuestionController {
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
         // 查询数据库
-        Page<Question> questionPage = questionService.page(new Page<>(current, size),
-                questionService.getQueryWrapper(questionQueryRequest));
+        Page<Question> questionPage = questionService.listQuestionByPage(questionQueryRequest);
         // 获取封装类
         return ResultUtils.success(questionService.getQuestionVOPage(questionPage, request));
     }
@@ -215,6 +216,9 @@ public class QuestionController {
         }
         Question question = new Question();
         BeanUtils.copyProperties(questionEditRequest, question);
+        if (questionEditRequest.getTags() != null) {
+            question.setTags(JSONUtil.toJsonStr(questionEditRequest.getTags()));
+        }
         // 数据校验
         questionService.validQuestion(question, false);
         User loginUser = userService.getLoginUser(request);
