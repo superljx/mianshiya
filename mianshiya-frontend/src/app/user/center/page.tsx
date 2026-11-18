@@ -19,9 +19,9 @@ export default function UserCenterPage() {
 
   return <main className="page-container">
     <h1 className="page-title">个人中心</h1>
-    <Row gutter={[24, 24]}>
+    <Row gutter={[24, 24]} align="top">
       <Col xs={24} md={6}>
-        <Card style={{ textAlign: "center", height: "100%" }}>
+        <Card style={{ textAlign: "center" }}>
           <Avatar size={80} src={loginUser.userAvatar || undefined} icon={<UserOutlined />} />
           <Typography.Title level={4}>{loginUser.userName || "用户"}</Typography.Title>
           <Typography.Paragraph type="secondary" style={{ overflowWrap: "anywhere" }}>{loginUser.userProfile || "这个人很忙，还没有填写个人简介。"}</Typography.Paragraph>

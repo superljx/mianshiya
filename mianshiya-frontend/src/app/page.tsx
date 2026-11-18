@@ -1,6 +1,7 @@
 import Link from "next/link";
 import BankCover from "@/components/BankCover";
 import GuestActions from "@/components/GuestActions";
+import HomeMonthlyActivity from "@/components/HomeMonthlyActivity";
 import { ArrowRightOutlined, CodeOutlined, SafetyCertificateOutlined, UserOutlined } from "@ant-design/icons";
 import styles from "./page.module.css";
 import { serverRequest } from "@/lib/serverRequest";
@@ -16,10 +17,12 @@ export default async function Home() {
   return (
     <main id="homePage" className="page-container">
       <section className={styles.hero}>
-        <div className={styles.eyebrow}>程序员面试刷题平台</div>
-        <h1>每一次练习，<br />都离理想的 Offer 更近一步。</h1>
-        
-        <GuestActions primaryClassName={styles.primaryLink} secondaryClassName={styles.secondaryLink} />
+        <div className={styles.heroCopy}>
+          <div className={styles.eyebrow}>程序员面试刷题平台</div>
+          <h1>每一次练习，<br />都离理想的 Offer 更近一步。</h1>
+          <GuestActions primaryClassName={styles.primaryLink} secondaryClassName={styles.secondaryLink} />
+        </div>
+        <div className={styles.heroActivity}><HomeMonthlyActivity /></div>
       </section>
       <section className={styles.contentSection}>
         <h2>最新题库 <Link href="/banks">查看全部 →</Link></h2>
