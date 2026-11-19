@@ -29,6 +29,7 @@ import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.sort.SortBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
@@ -62,7 +63,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     private QuestionBankQuestionService questionBankQuestionService;
 
     @Resource
-    private ElasticsearchRestTemplate elasticsearchRestTemplate;
+    private ObjectProvider<ElasticsearchRestTemplate> elasticsearchTemplateProvider;
 
     /**
      * 校验数据
@@ -251,6 +252,25 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         ThrowUtils.throwIf(questionQueryRequest.getCurrent() < 1
                 || questionQueryRequest.getPageSize() < 1 || questionQueryRequest.getPageSize() > 200,
                 ErrorCode.PARAMS_ERROR, "页码必须为正数，每页数量为 1 到 200");
+        try {
+            // 延迟获取：缺少 Bean、Bean 初始化失败和客户端连接异常均可进入降级。
+            ElasticsearchRestTemplate template = elasticsearchTemplateProvider.getIfAvailable();
+            if (template != null) {
+                return executeEsSearch(questionQueryRequest, template);
+            }
+            log.warn("题目搜索降级至数据库：ES 客户端未初始化，current={}, pageSize={}",
+                    questionQueryRequest.getCurrent(), questionQueryRequest.getPageSize());
+        } catch (RuntimeException exception) {
+            // 不记录完整请求，避免将关键词等用户输入写入日志。
+            log.warn("题目 ES 搜索异常，降级至数据库，current={}, pageSize={}",
+                    questionQueryRequest.getCurrent(), questionQueryRequest.getPageSize(), exception);
+        }
+        // 放在 catch 外执行，数据库失败必须正常向上抛出，不能伪装为成功空页。
+        return searchFromDatabase(questionQueryRequest);
+    }
+
+    private Page<Question> executeEsSearch(QuestionQueryRequest questionQueryRequest,
+                                          ElasticsearchRestTemplate elasticsearchRestTemplate) {
         // 获取参数
         Long id = questionQueryRequest.getId();
         Long notId = questionQueryRequest.getNotId();
@@ -336,6 +356,41 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
         page.setRecords(resourceList);
         return page;
+    }
+
+    /** ES 不可用时的等价条件查询；数据库 LIKE 不模拟 ES 分词和相关性评分。 */
+    public Page<Question> searchFromDatabase(QuestionQueryRequest request) {
+        QuestionQueryRequest databaseRequest = new QuestionQueryRequest();
+        org.springframework.beans.BeanUtils.copyProperties(request, databaseRequest);
+        databaseRequest.setSearchText(null);
+        // ES 专用字段不可直接作为 SQL 排序列；缺省使用稳定 ID 顺序。
+        Set<String> sortableFields = new java.util.HashSet<>(java.util.Arrays.asList(
+                "id", "title", "userId", "createTime", "updateTime"));
+        if (!sortableFields.contains(databaseRequest.getSortField())) {
+            databaseRequest.setSortField(null);
+        }
+        if (databaseRequest.getSortOrder() == null) {
+            databaseRequest.setSortOrder("descend");
+        }
+        QueryWrapper<Question> wrapper = getQueryWrapper(databaseRequest);
+        if (StringUtils.isNotBlank(request.getSearchText())) {
+            String text = request.getSearchText().trim();
+            wrapper.and(query -> query.like("title", text).or().like("content", text).or().like("answer", text));
+        }
+        if (request.getQuestionBankId() != null) {
+            List<QuestionBankQuestion> relations = questionBankQuestionService.list(
+                    Wrappers.<QuestionBankQuestion>lambdaQuery()
+                            .select(QuestionBankQuestion::getQuestionId)
+                            .eq(QuestionBankQuestion::getQuestionBankId, request.getQuestionBankId()));
+            Set<Long> ids = relations.stream().map(QuestionBankQuestion::getQuestionId)
+                    .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+            if (ids.isEmpty()) {
+                return new Page<>(request.getCurrent(), request.getPageSize(), 0);
+            }
+            wrapper.in("id", ids);
+        }
+        wrapper.orderByAsc("id");
+        return page(new Page<>(request.getCurrent(), request.getPageSize()), wrapper);
     }
 
 }

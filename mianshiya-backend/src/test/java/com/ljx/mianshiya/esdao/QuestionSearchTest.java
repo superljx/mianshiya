@@ -34,7 +34,9 @@ class QuestionSearchTest {
         service = new QuestionServiceImpl();
         template = mock(ElasticsearchRestTemplate.class);
         relations = mock(QuestionBankQuestionService.class);
-        ReflectionTestUtils.setField(service, "elasticsearchRestTemplate", template);
+        org.springframework.beans.factory.ObjectProvider<ElasticsearchRestTemplate> provider = mock(org.springframework.beans.factory.ObjectProvider.class);
+        when(provider.getIfAvailable()).thenReturn(template);
+        ReflectionTestUtils.setField(service, "elasticsearchTemplateProvider", provider);
         ReflectionTestUtils.setField(service, "questionBankQuestionService", relations);
         SearchHits<QuestionEsDTO> hits = mock(SearchHits.class);
         when(hits.getTotalHits()).thenReturn(23L);
@@ -85,6 +87,42 @@ class QuestionSearchTest {
         String query = captor.getValue().getQuery().toString();
         assertTrue(query.contains("123"));
         assertFalse(query.contains("questionBankId"));
+    }
+
+    @Test
+    void esQueryFailureMustFallBack() {
+        service = spy(service);
+        QuestionQueryRequest request = new QuestionQueryRequest();
+        Page<Question> expected = new Page<>(1, 10, 7);
+        when(template.search(any(NativeSearchQuery.class), eq(QuestionEsDTO.class)))
+                .thenThrow(new IllegalStateException("connection unavailable"));
+        doReturn(expected).when(service).searchFromDatabase(request);
+        assertSame(expected, service.searchFromEs(request));
+        verify(service).searchFromDatabase(request);
+    }
+
+    @Test
+    void missingOrFailedClientInitializationMustFallBack() {
+        service = spy(service);
+        org.springframework.beans.factory.ObjectProvider<ElasticsearchRestTemplate> provider = mock(org.springframework.beans.factory.ObjectProvider.class);
+        ReflectionTestUtils.setField(service, "elasticsearchTemplateProvider", provider);
+        QuestionQueryRequest request = new QuestionQueryRequest();
+        Page<Question> expected = new Page<>(1, 10, 7);
+        doReturn(expected).when(service).searchFromDatabase(request);
+        assertSame(expected, service.searchFromEs(request));
+        when(provider.getIfAvailable()).thenThrow(new IllegalStateException("initialization failed"));
+        assertSame(expected, service.searchFromEs(request));
+    }
+
+    @Test
+    void databaseFailureMustNotBeSwallowed() {
+        service = spy(service);
+        when(template.search(any(NativeSearchQuery.class), eq(QuestionEsDTO.class)))
+                .thenThrow(new IllegalStateException("ES unavailable"));
+        QuestionQueryRequest request = new QuestionQueryRequest();
+        doThrow(new IllegalStateException("database unavailable")).when(service).searchFromDatabase(request);
+        assertEquals("database unavailable", assertThrows(IllegalStateException.class,
+                () -> service.searchFromEs(request)).getMessage());
     }
 
     @Test
