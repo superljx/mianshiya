@@ -2,6 +2,10 @@ package com.ljx.mianshiya.mapper;
 
 import com.ljx.mianshiya.model.entity.Question;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.Date;
+import java.util.List;
 
 /**
 * @author ljx
@@ -10,7 +14,8 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 * @Entity com.ljx.mianshiya.model.entity.Question
 */
 public interface QuestionMapper extends BaseMapper<Question> {
-
+    @Select("select * from question where updateTime >= #{minUpdateTime}")
+    List<Question> listQuestionWithDelete(Date minUpdateTime);
 }
 
 

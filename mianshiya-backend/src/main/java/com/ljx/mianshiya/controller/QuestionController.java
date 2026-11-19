@@ -236,5 +236,18 @@ public class QuestionController {
         return ResultUtils.success(true);
     }
 
+    @PostMapping("/search/page/vo")
+    public BaseResponse<Page<QuestionVO>> searchQuestionVOByPage(@RequestBody QuestionQueryRequest questionQueryRequest,
+                                                                 HttpServletRequest request) {
+        ThrowUtils.throwIf(questionQueryRequest == null, ErrorCode.PARAMS_ERROR, "查询条件不能为空");
+        long size = questionQueryRequest.getPageSize();
+        // 校验分页，避免非法参数传入 ES。
+        ThrowUtils.throwIf(questionQueryRequest.getCurrent() < 1 || size < 1 || size > 200,
+                ErrorCode.PARAMS_ERROR, "页码必须为正数，每页数量为 1 到 200");
+        Page<Question> questionPage = questionService.searchFromEs(questionQueryRequest);
+        return ResultUtils.success(questionService.getQuestionVOPage(questionPage, request));
+    }
+
+
     // endregion
 }

@@ -10,6 +10,7 @@ import com.ljx.mianshiya.common.ErrorCode;
 import com.ljx.mianshiya.constant.CommonConstant;
 import com.ljx.mianshiya.exception.ThrowUtils;
 import com.ljx.mianshiya.mapper.QuestionMapper;
+import com.ljx.mianshiya.model.dto.question.QuestionEsDTO;
 import com.ljx.mianshiya.model.dto.question.QuestionQueryRequest;
 import com.ljx.mianshiya.model.entity.Question;
 import com.ljx.mianshiya.model.entity.QuestionBankQuestion;
@@ -23,11 +24,23 @@ import com.ljx.mianshiya.utils.SqlUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.sort.SortBuilder;
+import org.elasticsearch.search.sort.SortBuilders;
+import org.elasticsearch.search.sort.SortOrder;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -47,6 +60,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     @Resource
     @Lazy
     private QuestionBankQuestionService questionBankQuestionService;
+
+    @Resource
+    private ElasticsearchRestTemplate elasticsearchRestTemplate;
 
     /**
      * 校验数据
@@ -227,6 +243,99 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         // 翻页使用稳定顺序，避免同一题目跨页重复或遗漏。
         queryWrapper.orderByAsc("id");
         return this.page(new Page<>(current, pageSize), queryWrapper);
+    }
+
+    @Override
+    public Page<Question> searchFromEs(QuestionQueryRequest questionQueryRequest) {
+        ThrowUtils.throwIf(questionQueryRequest == null, ErrorCode.PARAMS_ERROR, "查询条件不能为空");
+        ThrowUtils.throwIf(questionQueryRequest.getCurrent() < 1
+                || questionQueryRequest.getPageSize() < 1 || questionQueryRequest.getPageSize() > 200,
+                ErrorCode.PARAMS_ERROR, "页码必须为正数，每页数量为 1 到 200");
+        // 获取参数
+        Long id = questionQueryRequest.getId();
+        Long notId = questionQueryRequest.getNotId();
+        String searchText = questionQueryRequest.getSearchText();
+        List<String> tags = questionQueryRequest.getTags();
+        Long questionBankId = questionQueryRequest.getQuestionBankId();
+        Long userId = questionQueryRequest.getUserId();
+        // 注意，ES 的起始页为 0
+        int current = questionQueryRequest.getCurrent() - 1;
+        int pageSize = questionQueryRequest.getPageSize();
+        String sortField = questionQueryRequest.getSortField();
+        String sortOrder = questionQueryRequest.getSortOrder();
+
+        // 构造查询条件
+        BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+        // 过滤
+        boolQueryBuilder.filter(QueryBuilders.termQuery("isDelete", 0));
+        if (id != null) {
+            boolQueryBuilder.filter(QueryBuilders.termQuery("id", id));
+        }
+        if (notId != null) {
+            boolQueryBuilder.mustNot(QueryBuilders.termQuery("id", notId));
+        }
+        if (userId != null) {
+            boolQueryBuilder.filter(QueryBuilders.termQuery("userId", userId));
+        }
+        if (questionBankId != null) {
+            // 题库关系不在 ES 文档中，先查询关联表，再按题目 id 过滤。
+            List<QuestionBankQuestion> relations = questionBankQuestionService.list(
+                    Wrappers.<QuestionBankQuestion>lambdaQuery()
+                            .select(QuestionBankQuestion::getQuestionId)
+                            .eq(QuestionBankQuestion::getQuestionBankId, questionBankId));
+            Set<Long> questionIds = relations.stream().map(QuestionBankQuestion::getQuestionId)
+                    .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+            if (questionIds.isEmpty()) {
+                return new Page<>(current + 1, pageSize, 0);
+            }
+            boolQueryBuilder.filter(QueryBuilders.termsQuery("id", questionIds));
+        }
+        // 独立字段条件必须参与检索，不能只处理 searchText 而忽略 title/content。
+        if (StringUtils.isNotBlank(questionQueryRequest.getTitle())) {
+            boolQueryBuilder.must(QueryBuilders.matchQuery("title", questionQueryRequest.getTitle().trim()));
+        }
+        if (StringUtils.isNotBlank(questionQueryRequest.getContent())) {
+            boolQueryBuilder.must(QueryBuilders.matchQuery("content", questionQueryRequest.getContent().trim()));
+        }
+        // 必须包含所有标签
+        if (CollUtil.isNotEmpty(tags)) {
+            for (String tag : tags) {
+                boolQueryBuilder.filter(QueryBuilders.termQuery("tags", tag));
+            }
+        }
+        // 按关键词检索
+        if (StringUtils.isNotBlank(searchText)) {
+            boolQueryBuilder.should(QueryBuilders.matchQuery("title", searchText));
+            boolQueryBuilder.should(QueryBuilders.matchQuery("content", searchText));
+            boolQueryBuilder.should(QueryBuilders.matchQuery("answer", searchText));
+            boolQueryBuilder.minimumShouldMatch(1);
+        }
+        // 排序
+        SortBuilder<?> sortBuilder = SortBuilders.scoreSort();
+        if (StringUtils.isNotBlank(sortField)) {
+            sortBuilder = SortBuilders.fieldSort(sortField);
+            sortBuilder.order(CommonConstant.SORT_ORDER_ASC.equals(sortOrder) ? SortOrder.ASC : SortOrder.DESC);
+        }
+        // 分页
+        PageRequest pageRequest = PageRequest.of(current, pageSize);
+        // 构造查询
+        NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
+                .withQuery(boolQueryBuilder)
+                .withPageable(pageRequest)
+                .withSorts(sortBuilder)
+                .build();
+        SearchHits<QuestionEsDTO> searchHits = elasticsearchRestTemplate.search(searchQuery, QuestionEsDTO.class);
+        // 复用 MySQL 的分页对象，封装返回结果
+        Page<Question> page = new Page<>(current + 1, pageSize, searchHits.getTotalHits());
+        List<Question> resourceList = new ArrayList<>();
+        if (searchHits.hasSearchHits()) {
+            List<SearchHit<QuestionEsDTO>> searchHitList = searchHits.getSearchHits();
+            for (SearchHit<QuestionEsDTO> questionEsDTOSearchHit : searchHitList) {
+                resourceList.add(QuestionEsDTO.dtoToObj(questionEsDTOSearchHit.getContent()));
+            }
+        }
+        page.setRecords(resourceList);
+        return page;
     }
 
 }
