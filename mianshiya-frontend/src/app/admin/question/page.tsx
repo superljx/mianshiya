@@ -34,6 +34,16 @@ export default function AdminQuestionPage() {
   const [records, setRecords] = useState<API.Question[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [batchAction, setBatchAction] = useState<"add" | "remove" | "delete" | null>(null);
+  const [batchBusy, setBatchBusy] = useState(false);
+  const batchBusyRef = useRef(false);
+  const [batchForm] = Form.useForm<{ questionBankId: string }>();
+  const [bankOptions, setBankOptions] = useState<{ value: string; label: string }[]>([]);
+  const [bankLoading, setBankLoading] = useState(false);
+  const [bankError, setBankError] = useState("");
+  const [bankKeyword, setBankKeyword] = useState("");
+  const [bankReload, setBankReload] = useState(0);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<API.Question | null>(null);
   const [saving, setSaving] = useState(false);
@@ -52,6 +62,7 @@ export default function AdminQuestionPage() {
     }).then((page) => {
       if (controller.signal.aborted) return;
       setRecords(page.records ?? []);
+      setSelectedIds([]);
       setTotal(Number(page.total) || 0);
     }).catch((error: unknown) => {
       if (controller.signal.aborted) return;
@@ -61,6 +72,51 @@ export default function AdminQuestionPage() {
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [query, pagination, refreshKey, message]);
+
+  useEffect(() => {
+    if (batchAction !== "add" && batchAction !== "remove") return;
+    const controller = new AbortController();
+    setBankLoading(true);
+    setBankError("");
+    const timer = window.setTimeout(() => {
+      void apiRequest<API.PageQuestionBankVO_>({ url: "/questionBank/list/page/vo", method: "POST", data: { current: 1, pageSize: 20, title: bankKeyword.trim() || undefined }, signal: controller.signal })
+        .then((page) => { if (!controller.signal.aborted) setBankOptions((page.records ?? []).filter((bank) => bank.id != null).map((bank) => ({ value: String(bank.id), label: `${bank.title || "未命名题库"}（${bank.id}）` }))); })
+        .catch((error: unknown) => { if (!controller.signal.aborted) { setBankOptions([]); setBankError(error instanceof Error ? error.message : "题库加载失败"); } })
+        .finally(() => { if (!controller.signal.aborted) setBankLoading(false); });
+    }, 250);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [batchAction, bankKeyword, bankReload]);
+
+  function openBatch(action: "add" | "remove" | "delete") {
+    if (!selectedIds.length || batchBusyRef.current) return;
+    batchForm.resetFields();
+    setBankKeyword("");
+    setBatchAction(action);
+  }
+
+  async function submitBatch() {
+    if (!batchAction || !selectedIds.length || batchBusyRef.current) return;
+    let questionBankId: string | undefined;
+    if (batchAction !== "delete") {
+      try { questionBankId = (await batchForm.validateFields()).questionBankId; } catch { return; }
+    }
+    batchBusyRef.current = true;
+    setBatchBusy(true);
+    try {
+      const result = await apiRequest<boolean>({
+        url: batchAction === "delete" ? "/question/delete/batch" : `/questionBankquestion/${batchAction === "add" ? "add" : "remove"}/batch`,
+        method: "POST", data: { questionIdList: selectedIds, ...(questionBankId ? { questionBankId } : {}) },
+      });
+      if (!result) throw new Error("操作未成功，请刷新后确认状态");
+      void message.success("批量操作成功");
+      setBatchAction(null);
+      setSelectedIds([]);
+      setPagination((value) => ({ ...value, current: 1 }));
+      setRefreshKey((value) => value + 1);
+    } catch (error: unknown) {
+      void message.error(error instanceof Error ? error.message : "批量操作失败，请刷新确认后再重试");
+    } finally { batchBusyRef.current = false; setBatchBusy(false); }
+  }
 
   function openEditor(question: API.Question | null) {
     setEditing(question);
@@ -172,8 +228,27 @@ export default function AdminQuestionPage() {
       <Button icon={<ReloadOutlined />} loading={loading} onClick={() => setRefreshKey((value) => value + 1)}>刷新</Button>
       <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor(null)}>新增题目</Button>
     </Space>}>
-      <Table<API.Question> rowKey={(question) => String(question.id)} columns={columns} dataSource={records} loading={loading} scroll={{ x: 1900 }} pagination={{ ...pagination, total, showSizeChanger: true, showTotal: (count) => `共 ${count} 道题目`, onChange: (current, pageSize) => setPagination({ current, pageSize }) }} />
+      <Alert style={{ marginBottom: 16 }} type="info" showIcon message={<Space wrap>
+        <span>已选择 {selectedIds.length} 项（仅当前页）</span>
+        <Button size="small" disabled={!selectedIds.length || batchBusy} onClick={() => setSelectedIds([])}>取消选择</Button>
+        <Button size="small" disabled={!selectedIds.length || loading || batchBusy} onClick={() => openBatch("add")}>批量加入题库</Button>
+        <Button size="small" disabled={!selectedIds.length || loading || batchBusy} onClick={() => openBatch("remove")}>批量移出题库</Button>
+        <Button size="small" danger disabled={!selectedIds.length || loading || batchBusy} onClick={() => openBatch("delete")}>批量删除题目</Button>
+      </Space>} />
+      <Table<API.Question> rowSelection={{ selectedRowKeys: selectedIds, onChange: (keys) => setSelectedIds(keys.map(String)), selections: [Table.SELECTION_ALL, Table.SELECTION_INVERT, Table.SELECTION_NONE], getCheckboxProps: (record) => ({ disabled: record.id == null || batchBusy || loading }) }} rowKey={(question) => String(question.id)} columns={columns} dataSource={records} loading={loading} scroll={{ x: 1900 }} pagination={{ ...pagination, total, showSizeChanger: true, showTotal: (count) => `共 ${count} 道题目`, onChange: (current, pageSize) => { setSelectedIds([]); setPagination({ current, pageSize }); } }} />
     </Card>
+    <Modal title={batchAction === "delete" ? "确认批量删除题目" : batchAction === "add" ? "批量加入题库" : "批量移出题库"} open={batchAction !== null} destroyOnClose confirmLoading={batchBusy} maskClosable={!batchBusy} closable={!batchBusy} cancelButtonProps={{ disabled: batchBusy }} okButtonProps={{ danger: batchAction === "delete", disabled: batchAction !== "delete" && (bankLoading || Boolean(bankError)) }} okText={batchAction === "delete" ? "确认删除" : "确认"} cancelText="取消" onCancel={() => { if (!batchBusyRef.current) setBatchAction(null); }} onOk={() => void submitBatch()}>
+      <Typography.Paragraph>本次操作涉及 <strong>{selectedIds.length}</strong> 道已选题目。</Typography.Paragraph>
+      {batchAction === "delete" ? <Alert type="warning" showIcon message="删除题目及相关关联，无法通过此页面撤销。请核对后确认。" /> : <>
+        <Alert type="info" showIcon style={{ marginBottom: 16 }} message={batchAction === "remove" ? "仅移除与目标题库的关联，不删除题目。" : "将所选题目批量加入目标题库。"} />
+        {bankError && <Alert type="error" message={bankError} action={<Button size="small" onClick={() => setBankReload((value) => value + 1)}>重新加载</Button>} />}
+        <Form form={batchForm} layout="vertical" disabled={batchBusy}>
+          <Form.Item name="questionBankId" label="目标题库" rules={[{ required: true, message: "请选择目标题库" }]}>
+            <Select showSearch allowClear filterOption={false} loading={bankLoading} onSearch={setBankKeyword} options={bankOptions} placeholder="输入题库标题搜索，最多显示20项" notFoundContent={bankLoading ? "正在加载…" : "没有匹配题库"} />
+          </Form.Item>
+        </Form>
+      </>}
+    </Modal>
     <Modal title={editing ? "编辑题目" : "新增题目"} open={open} width={1000} forceRender confirmLoading={saving} maskClosable={!saving} closable={!saving} cancelButtonProps={{ disabled: saving }} okText="保存" cancelText="取消" onCancel={() => { if (!saving) setOpen(false); }} onOk={() => editForm.submit()}>
       <Form form={editForm} layout="vertical" onFinish={save} disabled={saving}>
         <Form.Item label="标题" name="title" rules={[{ required: true, whitespace: true, message: "请输入题目标题" }]}><Input maxLength={80} showCount /></Form.Item>

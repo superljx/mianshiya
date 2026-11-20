@@ -5,22 +5,16 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ljx.mianshiya.annotation.AuthCheck;
 import com.ljx.mianshiya.common.BaseResponse;
-import com.ljx.mianshiya.common.DeleteRequest;
 import com.ljx.mianshiya.common.ErrorCode;
 import com.ljx.mianshiya.common.ResultUtils;
 import com.ljx.mianshiya.constant.UserConstant;
 import com.ljx.mianshiya.exception.BusinessException;
 import com.ljx.mianshiya.exception.ThrowUtils;
-import com.ljx.mianshiya.model.dto.questionbankquestion.QuestionBankQuestionAddRequest;
-import com.ljx.mianshiya.model.dto.questionbankquestion.QuestionBankQuestionQueryRequest;
-import com.ljx.mianshiya.model.dto.questionbankquestion.QuestionBankQuestionRemoveRequest;
-import com.ljx.mianshiya.model.dto.questionbankquestion.QuestionBankQuestionUpdateRequest;
+import com.ljx.mianshiya.model.dto.questionbankquestion.*;
 import com.ljx.mianshiya.model.entity.QuestionBankQuestion;
 import com.ljx.mianshiya.model.entity.User;
 import com.ljx.mianshiya.model.vo.QuestionBankQuestionVO;
 import com.ljx.mianshiya.service.QuestionBankQuestionService;
-import com.ljx.mianshiya.service.QuestionBankService;
-import com.ljx.mianshiya.service.QuestionService;
 import com.ljx.mianshiya.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -28,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
  * 题库题目接口
@@ -39,7 +34,7 @@ import javax.servlet.http.HttpServletRequest;
 public class QuestionBankQuestionController {
 
     @Resource
-    private QuestionBankQuestionService questionBankquestionService;
+    private QuestionBankQuestionService questionBankQuestionService;
 
     @Resource
     private UserService userService;
@@ -60,13 +55,13 @@ public class QuestionBankQuestionController {
         QuestionBankQuestion questionBankquestion = new QuestionBankQuestion();
         BeanUtils.copyProperties(questionBankquestionAddRequest, questionBankquestion);
         // 数据校验
-        questionBankquestionService.validQuestionBankQuestion(questionBankquestion, true);
+        questionBankQuestionService.validQuestionBankQuestion(questionBankquestion, true);
 
         User loginUser = userService.getLoginUser(request);
         questionBankquestion.setUserId(loginUser.getId());
 
         // 写入数据库
-        boolean result = questionBankquestionService.save(questionBankquestion);
+        boolean result = questionBankQuestionService.save(questionBankquestion);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         // 返回新写入的数据 id
         long newQuestionBankQuestionId = questionBankquestion.getId();
@@ -92,7 +87,7 @@ public class QuestionBankQuestionController {
         LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
                 .eq(QuestionBankQuestion::getQuestionId, questionId)
                 .eq(QuestionBankQuestion::getQuestionBankId, questionBankId);
-        boolean result = questionBankquestionService.remove(lambdaQueryWrapper);
+        boolean result = questionBankQuestionService.remove(lambdaQueryWrapper);
 
         return ResultUtils.success(result);
     }
@@ -112,13 +107,13 @@ public class QuestionBankQuestionController {
         QuestionBankQuestion questionBankquestion = new QuestionBankQuestion();
         BeanUtils.copyProperties(questionBankquestionUpdateRequest, questionBankquestion);
         // 数据校验
-        questionBankquestionService.validQuestionBankQuestion(questionBankquestion, false);
+        questionBankQuestionService.validQuestionBankQuestion(questionBankquestion, false);
         // 判断是否存在
         long id = questionBankquestionUpdateRequest.getId();
-        QuestionBankQuestion oldQuestionBankQuestion = questionBankquestionService.getById(id);
+        QuestionBankQuestion oldQuestionBankQuestion = questionBankQuestionService.getById(id);
         ThrowUtils.throwIf(oldQuestionBankQuestion == null, ErrorCode.NOT_FOUND_ERROR);
         // 操作数据库
-        boolean result = questionBankquestionService.updateById(questionBankquestion);
+        boolean result = questionBankQuestionService.updateById(questionBankquestion);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
     }
@@ -133,10 +128,10 @@ public class QuestionBankQuestionController {
     public BaseResponse<QuestionBankQuestionVO> getQuestionBankQuestionVOById(long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
         // 查询数据库
-        QuestionBankQuestion questionBankquestion = questionBankquestionService.getById(id);
+        QuestionBankQuestion questionBankquestion = questionBankQuestionService.getById(id);
         ThrowUtils.throwIf(questionBankquestion == null, ErrorCode.NOT_FOUND_ERROR);
         // 获取封装类
-        return ResultUtils.success(questionBankquestionService.getQuestionBankQuestionVO(questionBankquestion, request));
+        return ResultUtils.success(questionBankQuestionService.getQuestionBankQuestionVO(questionBankquestion, request));
     }
 
     /**
@@ -151,8 +146,8 @@ public class QuestionBankQuestionController {
         long current = questionBankquestionQueryRequest.getCurrent();
         long size = questionBankquestionQueryRequest.getPageSize();
         // 查询数据库
-        Page<QuestionBankQuestion> questionBankquestionPage = questionBankquestionService.page(new Page<>(current, size),
-                questionBankquestionService.getQueryWrapper(questionBankquestionQueryRequest));
+        Page<QuestionBankQuestion> questionBankquestionPage = questionBankQuestionService.page(new Page<>(current, size),
+                questionBankQuestionService.getQueryWrapper(questionBankquestionQueryRequest));
         return ResultUtils.success(questionBankquestionPage);
     }
 
@@ -171,10 +166,10 @@ public class QuestionBankQuestionController {
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
         // 查询数据库
-        Page<QuestionBankQuestion> questionBankquestionPage = questionBankquestionService.page(new Page<>(current, size),
-                questionBankquestionService.getQueryWrapper(questionBankquestionQueryRequest));
+        Page<QuestionBankQuestion> questionBankquestionPage = questionBankQuestionService.page(new Page<>(current, size),
+                questionBankQuestionService.getQueryWrapper(questionBankquestionQueryRequest));
         // 获取封装类
-        return ResultUtils.success(questionBankquestionService.getQuestionBankQuestionVOPage(questionBankquestionPage, request));
+        return ResultUtils.success(questionBankQuestionService.getQuestionBankQuestionVOPage(questionBankquestionPage, request));
     }
 
     /**
@@ -196,10 +191,39 @@ public class QuestionBankQuestionController {
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
         // 查询数据库
-        Page<QuestionBankQuestion> questionBankquestionPage = questionBankquestionService.page(new Page<>(current, size),
-                questionBankquestionService.getQueryWrapper(questionBankquestionQueryRequest));
+        Page<QuestionBankQuestion> questionBankquestionPage = questionBankQuestionService.page(new Page<>(current, size),
+                questionBankQuestionService.getQueryWrapper(questionBankquestionQueryRequest));
         // 获取封装类
-        return ResultUtils.success(questionBankquestionService.getQuestionBankQuestionVOPage(questionBankquestionPage, request));
+        return ResultUtils.success(questionBankQuestionService.getQuestionBankQuestionVOPage(questionBankquestionPage, request));
+    }
+
+    @PostMapping("/add/batch")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> batchAddQuestionsToBank(
+            @RequestBody QuestionBankQuestionBatchAddRequest questionBankQuestionBatchAddRequest,
+            HttpServletRequest request
+    ) {
+        // 参数校验
+        ThrowUtils.throwIf(questionBankQuestionBatchAddRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        Long questionBankId = questionBankQuestionBatchAddRequest.getQuestionBankId();
+        List<Long> questionIdList = questionBankQuestionBatchAddRequest.getQuestionIdList();
+        questionBankQuestionService.batchAddQuestionsToBank(questionIdList, questionBankId, loginUser);
+        return ResultUtils.success(true);
+    }
+
+    @PostMapping("/remove/batch")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> batchRemoveQuestionsFromBank(
+            @RequestBody QuestionBankQuestionBatchRemoveRequest questionBankQuestionBatchRemoveRequest,
+            HttpServletRequest request
+    ) {
+        // 参数校验
+        ThrowUtils.throwIf(questionBankQuestionBatchRemoveRequest == null, ErrorCode.PARAMS_ERROR);
+        Long questionBankId = questionBankQuestionBatchRemoveRequest.getQuestionBankId();
+        List<Long> questionIdList = questionBankQuestionBatchRemoveRequest.getQuestionIdList();
+        questionBankQuestionService.batchRemoveQuestionsFromBank(questionIdList, questionBankId);
+        return ResultUtils.success(true);
     }
 
     // endregion

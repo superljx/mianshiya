@@ -1,6 +1,8 @@
 package com.ljx.mianshiya.controller;
 
 import cn.hutool.json.JSONUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ljx.mianshiya.annotation.AuthCheck;
 import com.ljx.mianshiya.common.BaseResponse;
@@ -10,17 +12,17 @@ import com.ljx.mianshiya.common.ResultUtils;
 import com.ljx.mianshiya.constant.UserConstant;
 import com.ljx.mianshiya.exception.BusinessException;
 import com.ljx.mianshiya.exception.ThrowUtils;
-import com.ljx.mianshiya.model.dto.question.QuestionAddRequest;
-import com.ljx.mianshiya.model.dto.question.QuestionEditRequest;
-import com.ljx.mianshiya.model.dto.question.QuestionQueryRequest;
-import com.ljx.mianshiya.model.dto.question.QuestionUpdateRequest;
+import com.ljx.mianshiya.model.dto.question.*;
 import com.ljx.mianshiya.model.entity.Question;
+import com.ljx.mianshiya.model.entity.QuestionBankQuestion;
 import com.ljx.mianshiya.model.entity.User;
 import com.ljx.mianshiya.model.vo.QuestionVO;
+import com.ljx.mianshiya.service.QuestionBankQuestionService;
 import com.ljx.mianshiya.service.QuestionService;
 import com.ljx.mianshiya.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -42,6 +44,8 @@ public class QuestionController {
 
     @Resource
     private UserService userService;
+    @Autowired
+    private QuestionBankQuestionService questionBankQuestionService;
 
     // region 增删改查
 
@@ -97,9 +101,30 @@ public class QuestionController {
         }
         // 操作数据库
         boolean result = questionService.removeById(id);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, String.format("删除题目 %s 失败", id));
+        // 级联删除题库关联
+        LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
+                .eq(QuestionBankQuestion::getQuestionId, id);
+        result = questionBankQuestionService.remove(lambdaQueryWrapper);
+        ThrowUtils.throwIf(result, ErrorCode.OPERATION_ERROR, String.format("级联删除 %s 的题库关联失败", id));
         return ResultUtils.success(true);
     }
+
+    /**
+     * 批量删除题目
+     * @param questionBatchDeleteRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/delete/batch")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> batchDeleteQuestions(@RequestBody QuestionBatchDeleteRequest questionBatchDeleteRequest,
+                                                      HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBatchDeleteRequest == null, ErrorCode.PARAMS_ERROR);
+        questionService.batchDeleteQuestions(questionBatchDeleteRequest.getQuestionIdList());
+        return ResultUtils.success(true);
+    }
+
 
     /**
      * 更新题目（仅管理员可用）

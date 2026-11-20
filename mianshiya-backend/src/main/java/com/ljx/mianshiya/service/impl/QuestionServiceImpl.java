@@ -38,6 +38,7 @@ import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
 import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -267,6 +268,22 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
         // 放在 catch 外执行，数据库失败必须正常向上抛出，不能伪装为成功空页。
         return searchFromDatabase(questionQueryRequest);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void batchDeleteQuestions(List<Long> questionIdList) {
+        ThrowUtils.throwIf(CollUtil.isEmpty(questionIdList), ErrorCode.PARAMS_ERROR, "题目列表为空");
+
+        for (Long questionId : questionIdList) {
+            boolean result = this.removeById(questionId);
+            ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, String.format("删除题目 %s 失败", questionId));
+
+            LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
+                    .eq(QuestionBankQuestion::getQuestionId, questionId);
+            result = questionBankQuestionService.remove(lambdaQueryWrapper);
+            ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, String.format("级联删除 %s 的题库关联失败", questionId));
+        }
     }
 
     private Page<Question> executeEsSearch(QuestionQueryRequest questionQueryRequest,
