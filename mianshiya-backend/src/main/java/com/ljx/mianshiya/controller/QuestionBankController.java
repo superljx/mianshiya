@@ -1,5 +1,8 @@
 package com.ljx.mianshiya.controller;
 
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
+import com.alibaba.csp.sentinel.slots.block.degrade.DegradeException;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jd.platform.hotkey.client.callback.JdHotKeyStore;
 import com.ljx.mianshiya.annotation.AuthCheck;
@@ -201,6 +204,9 @@ public class QuestionBankController {
      * @return
      */
     @PostMapping("/list/page/vo")
+    @SentinelResource(value = "listQuestionBankVOByPage",
+            blockHandler = "handleBlockException",
+            fallback = "handleFallback")
     public BaseResponse<Page<QuestionBankVO>> listQuestionBankVOByPage(@RequestBody QuestionBankQueryRequest questionBankQueryRequest,
                                                                HttpServletRequest request) {
         long current = questionBankQueryRequest.getCurrent();
@@ -212,6 +218,34 @@ public class QuestionBankController {
                 questionBankService.getQueryWrapper(questionBankQueryRequest));
         // 获取封装类
         return ResultUtils.success(questionBankService.getQuestionBankVOPage(questionBankPage, request));
+    }
+
+    /**
+     * listQuestionBankVOByPage 降级操作：直接返回本地数据
+     * 处理业务逻辑中的异常，比如 BusinessException
+     */
+    public BaseResponse<Page<QuestionBankVO>> handleFallback(
+            @RequestBody QuestionBankQueryRequest questionBankQueryRequest,
+            HttpServletRequest request, Throwable ex) {
+        // 可以返回本地数据或空数据
+        return ResultUtils.success(null);
+    }
+
+    /**
+     * listQuestionBankVOByPage 流控操作，处理 Sentinel 里的流量异常
+     * 限流：提示“请求过于频繁，请稍后再试”
+     */
+    public BaseResponse<Page<QuestionBankVO>> handleBlockException(
+            @RequestBody QuestionBankQueryRequest questionBankQueryRequest,
+            HttpServletRequest request, BlockException ex) {
+
+        // 降级操作
+        if (ex instanceof DegradeException) {
+            return handleFallback(questionBankQueryRequest, request, ex);
+        }
+
+        // 限流操作
+        return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "请求过于频繁，请稍后再试");
     }
 
     /**

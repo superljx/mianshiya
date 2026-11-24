@@ -1,6 +1,12 @@
 package com.ljx.mianshiya.controller;
 
 import cn.hutool.json.JSONUtil;
+import com.alibaba.csp.sentinel.Entry;
+import com.alibaba.csp.sentinel.EntryType;
+import com.alibaba.csp.sentinel.SphU;
+import com.alibaba.csp.sentinel.Tracer;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
+import com.alibaba.csp.sentinel.slots.block.degrade.DegradeException;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -215,6 +221,44 @@ public class QuestionController {
         Page<Question> questionPage = questionService.listQuestionByPage(questionQueryRequest);
         // 获取封装类
         return ResultUtils.success(questionService.getQuestionVOPage(questionPage, request));
+    }
+
+    @PostMapping("/list/page/vo/testLimit")
+    public BaseResponse<Page<QuestionVO>> listQuestionVOByPageTestLimit(@RequestBody QuestionQueryRequest questionQueryRequest,
+                                                                        HttpServletRequest request) {
+        // 基于 IP 限流
+        String remoteAddr = request.getRemoteAddr();
+        Entry entry = null;
+        try  {
+            entry = SphU.entry("listQuestionVOByPage", EntryType.IN, 1, remoteAddr);
+            // 被保护的业务逻辑
+            // 查询数据库
+            Page<Question> questionPage = questionService.listQuestionByPage(questionQueryRequest);
+            // 获取封装类
+            return ResultUtils.success(questionService.getQuestionVOPage(questionPage, request));
+        } catch (BlockException ex) {
+            // 业务异常
+            if (!BlockException.isBlockException(ex)) {
+                Tracer.trace(ex);
+                return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "系统错误");
+            }
+            // 资源访问阻止，被限流或被降级
+            if (ex instanceof DegradeException) {
+                return handleFallback(questionQueryRequest, request, ex);
+            }
+            // 限流操作
+            return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "访问过于频繁，请稍后再试");
+        } finally {
+            if (entry != null) {
+                entry.exit(1, remoteAddr);
+            }
+        }
+    }
+
+    // 降级处理逻辑
+    public BaseResponse<Page<QuestionVO>> handleFallback(QuestionQueryRequest questionQueryRequest,
+                                                       HttpServletRequest request, Throwable ex) {
+        return ResultUtils.success(null);
     }
 
     /**
