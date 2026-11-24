@@ -4,6 +4,7 @@ import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.jd.platform.hotkey.client.callback.JdHotKeyStore;
 import com.ljx.mianshiya.annotation.AuthCheck;
 import com.ljx.mianshiya.common.BaseResponse;
 import com.ljx.mianshiya.common.DeleteRequest;
@@ -164,11 +165,24 @@ public class QuestionController {
     @GetMapping("/get/vo")
     public BaseResponse<QuestionVO> getQuestionVOById(long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+
+        String key = "question_detail_" + id;
+        // 判断是否为热点key
+        if (JdHotKeyStore.isHotKey(key)) {
+            Object cachedQuestionVO = JdHotKeyStore.get(key);
+            if (cachedQuestionVO != null) {
+                return ResultUtils.success((QuestionVO) cachedQuestionVO);
+            }
+        }
+
         // 查询数据库
         Question question = questionService.getById(id);
         ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR);
+        QuestionVO questionVO = questionService.getQuestionVO(question, request);
+        // 设置热点key-value
+        JdHotKeyStore.smartSet(key, questionVO);
         // 获取封装类
-        return ResultUtils.success(questionService.getQuestionVO(question, request));
+        return ResultUtils.success(questionVO);
     }
 
     /**

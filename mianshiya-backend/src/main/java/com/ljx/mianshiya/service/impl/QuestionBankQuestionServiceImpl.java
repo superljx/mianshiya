@@ -208,7 +208,7 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
         ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR);
         // 找出哪些题目是合法的
         List<Question> questionList = questionService.listByIds(questionIdList);
-        List<Long> validQuestionId = questionList.stream().map(Question::getId).toList();
+        List<Long> validQuestionId = questionList.stream().map(Question::getId).collect(Collectors.toList());
         ThrowUtils.throwIf(CollUtil.isEmpty(validQuestionId), ErrorCode.PARAMS_ERROR, "所选题目均非法");
 
         QuestionBank questionBank = questionBankService.getById(questionBankId);
@@ -222,7 +222,7 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
         Set<Long> existQuestionId = existQuestionList.stream().map(QuestionBankQuestion::getQuestionId).collect(Collectors.toSet());
         validQuestionId = validQuestionId.stream().filter(questionId ->
                 !existQuestionId.contains(questionId)
-        ).toList();
+        ).collect(Collectors.toList());
         ThrowUtils.throwIf(CollUtil.isEmpty(validQuestionId), ErrorCode.PARAMS_ERROR, "所有题目均已在题库中");
 
         // 分批次处理
@@ -235,7 +235,7 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
                 questionBankQuestion.setUserId(loginUser.getId());
                 questionBankQuestion.setQuestionBankId(questionBankId);
                 return questionBankQuestion;
-            }).toList();
+            }).collect(Collectors.toList());
 
             QuestionBankQuestionServiceImpl currentProxy = (QuestionBankQuestionServiceImpl) AopContext.currentProxy();
             currentProxy.batchAddQuestionsToBankInner(questionBankQuestions);
