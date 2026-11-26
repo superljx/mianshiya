@@ -1,6 +1,7 @@
 package com.ljx.mianshiya.controller;
 
 import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.json.JSONUtil;
 import com.alibaba.csp.sentinel.Entry;
 import com.alibaba.csp.sentinel.EntryType;
@@ -12,7 +13,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jd.platform.hotkey.client.callback.JdHotKeyStore;
-import com.ljx.mianshiya.annotation.AuthCheck;
 import com.ljx.mianshiya.common.BaseResponse;
 import com.ljx.mianshiya.common.DeleteRequest;
 import com.ljx.mianshiya.common.ErrorCode;
@@ -20,6 +20,7 @@ import com.ljx.mianshiya.common.ResultUtils;
 import com.ljx.mianshiya.constant.UserConstant;
 import com.ljx.mianshiya.exception.BusinessException;
 import com.ljx.mianshiya.exception.ThrowUtils;
+import com.ljx.mianshiya.manager.CounterManager;
 import com.ljx.mianshiya.model.dto.question.*;
 import com.ljx.mianshiya.model.entity.Question;
 import com.ljx.mianshiya.model.entity.QuestionBankQuestion;
@@ -30,13 +31,11 @@ import com.ljx.mianshiya.service.QuestionService;
 import com.ljx.mianshiya.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 题目接口
@@ -52,10 +51,13 @@ public class QuestionController {
 
     @Resource
     private UserService userService;
-    @Autowired
+    @Resource
     private QuestionBankQuestionService questionBankQuestionService;
+    @Resource
+    private CounterManager counterManager;
 
     // region 增删改查
+
 
     /**
      * 创建题目
@@ -172,6 +174,9 @@ public class QuestionController {
     @GetMapping("/get/vo")
     public BaseResponse<QuestionVO> getQuestionVOById(long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+        // 检测爬虫
+        User user = userService.getLoginUser(request);
+        crawlerDetect(user.getId());
 
         String key = "question_detail_" + id;
         // 判断是否为热点key
@@ -192,6 +197,40 @@ public class QuestionController {
         return ResultUtils.success(questionVO);
     }
 
+    /**
+     * 检测爬虫
+     *
+     * @param loginUserId
+     */
+    private void crawlerDetect(long loginUserId) {
+        // 调用多少次时告警
+        final int WARN_COUNT = 30;
+        // 超过多少次封号
+        final int BAN_COUNT = 60;
+        // 拼接访问 key
+        String key = String.format("user:access:%s", loginUserId);
+        // 一分钟内访问次数，180 秒过期
+        long count = counterManager.incrAndGetCounter(key, 1, TimeUnit.MINUTES, 180);
+        // 是否封号
+        if (count > BAN_COUNT) {
+            // 踢下线
+            StpUtil.kickout(loginUserId);
+            // 永久封号
+            StpUtil.disable(loginUserId, -1);
+            // 封号
+            User updateUser = new User();
+            updateUser.setId(loginUserId);
+            updateUser.setUserRole("ban");
+            userService.updateById(updateUser);
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "访问太频繁，已被封号");
+        }
+        // 是否告警
+        if (count == WARN_COUNT) {
+            // todo 可以改为向管理员发送邮件通知
+            throw new BusinessException(110, "警告访问太频繁");
+        }
+    }
+    
     /**
      * 分页获取题目列表（仅管理员可用）
      *
